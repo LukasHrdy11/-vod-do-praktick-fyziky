@@ -1,0 +1,59 @@
+# ==============================================================================
+# Úloha č. 7: Studium kmitů vázaných oscilátorů
+# Experimentátor: Lukáš Hrdý
+# Datum měření: 24. 2. 2026
+# ==============================================================================
+# Podmínky: t = 22.0 °C, p = 1000 hPa, vlhkost = 45 %
+# Přístroje: Stopky (chyba 0.2 s), Svinovací metr (chyba 0.001 m)
+# ==============================================================================
+
+[CONSTANTS]
+# delta_t: Chyba měření času (reakční doba) pro běžné kmity v sekundách
+delta_t = 0.05
+# delta_t4: Zvýšená chyba pro měření času přelévání energie Ts (uzly) v sekundách
+delta_t4 = 0.1
+
+[UNCOUPLED]
+# Měření 1. úkolu: Doba kmitu nevázaných kyvadel.
+# Formát: Oznaceni_kyvadla, Pocet_kmitu_n, t1, t2, t3, ...
+Kyvadlo_A, 10, 18.8, 18.85, 18.85
+Kyvadlo_B, 10, 18.9, 18.85, 18.85
+
+[FIXED_DISTANCE]
+# 2. úkol: Vázaná kyvadla ve fixní vzdálenosti h = 22 cm.
+# Formát: Pruzina, Mod_kmitu, Pocet_kmitu_n, t1, t2, t3, ...
+# Kódy pro Mod_kmitu:
+# 1 = Soufázové (T1)
+# 2 = Protifázové (T2)
+# 3 = Rychlé kmity uvnitř rázů (T3)
+# 4 = Čas Ts (doba mezi uzly, T4/2 -> volíme n = 0.5)
+
+# Pružina A (7 N/m)
+A, 1, 10, 18.9, 18.85, 18.9
+A, 2, 10, 17.75, 17.7, 17.75
+A, 3, 10, 18.25, 18.35, 18.30
+A, 4, 0.5, 28.2
+
+# Pružina B (4 N/m)
+B, 1, 10, 18.85, 18.9, 18.85
+B, 2, 10, 18.2, 18.2, 18.25
+B, 3, 10, 18.45, 18.4, 18.4
+B, 4, 0.5, 60.25
+
+[KAPPA_VS_H]
+# 5. úkol: Měření závislosti stupně vazby kappa na vzdálenosti h.
+# Formát: h [m] | t1 (soufázové) | t2_1 | t2_2 | t2_3 (protifázové)
+# První polovina závěsu (ideální model)
+0.1   18.85   18.6   18.6   18.65
+0.15  18.9    18.35  18.4   18.35
+0.2   18.9    18.0   18.05  18.0
+0.25  18.85   17.6   17.65  17.6
+0.3   18.8    17.05  17.00  17.05
+0.35  18.9    16.6   16.65  16.6
+0.4   18.85   16.15  16.05  16.10
+
+# Druhá polovina závěsu (pro diskuzi - odchylky od teorie)
+0.5   18.85   15.1   15.15  15.1
+0.6   18.9    14.2   14.25  14.2
+0.7   18.85   13.35  13.3   13.35
+0.76  18.8    13.15  13.2   13.1
