@@ -8,7 +8,7 @@
 
 [2] VELIKOST ČÁSTIC (vč. nejistoty typu B)
   Průměr částice:   d = (4.4+/-0.1)e+02 nm
-  Poloměr částice:  r = 220+/-6 nm
+  Poloměr částice:  r = 218+/-6 nm
 
 [3] AKTIVITY BROWNOVA POHYBU (Jednotlivá měření)
   Měření 1: směrnice = 4.3+/-0.3 μm^2/s  =>  A = 2.1+/-0.1 μm^2/s

@@ -136,8 +136,7 @@ def main():
         
         x_fit = np.linspace(0, max(x_data)*1.05, 100)
         y_fit = linear_model(x_fit, a_val)
-        plt.plot(x_fit, y_fit, color=colors[i%len(colors)], linestyle='--', alpha=0.7)
-        
+        plt.plot(x_fit, y_fit, color=colors[i%len(colors)], linestyle='--', alpha=0.7, label=f'Regrese měření {m_id}')
         report_lines.append(f"  Měření {m_id}: směrnice = {a_u:.1u} μm^2/s  =>  A = {A_u:.1u} μm^2/s")
 
     # 4. Výpočty pro obě varianty
