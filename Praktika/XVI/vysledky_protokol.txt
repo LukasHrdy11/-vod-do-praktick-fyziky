@@ -1,0 +1,33 @@
+===========================================================
+ VÝSLEDKY ANALÝZY: Úloha 16 - Studium Brownova pohybu
+===========================================================
+
+[1] PARAMETRY A PODMÍNKY
+  Teplota měření:   T = 25+/-3 °C  (298+/-3 K)
+  Viskozita vody:   η = 0.89+/-0.06 mPa·s
+
+[2] VELIKOST ČÁSTIC (vč. nejistoty typu B)
+  Průměr částice:   d = (4.4+/-0.1)e+02 nm
+  Poloměr částice:  r = 220+/-6 nm
+
+[3] AKTIVITY BROWNOVA POHYBU (Jednotlivá měření)
+  Měření 1: směrnice = 4.3+/-0.3 μm^2/s  =>  A = 2.1+/-0.1 μm^2/s
+  Měření 2: směrnice = 1.43+/-0.06 μm^2/s  =>  A = 0.72+/-0.03 μm^2/s
+  Měření 3: směrnice = 4.7+/-0.2 μm^2/s  =>  A = 2.4+/-0.1 μm^2/s
+
+===========================================================
+ VARIANTA A: VŠECHNA MĚŘENÍ (včetně č. 2)
+===========================================================
+  Průměrná aktivita: A_průměr = 1.7+/-0.5 μm^2/s
+  Avogadrova konst.: N_A      = (8+/-2)e+23 mol^-1
+  Odchylka od N_A_tab: δ = 29.7 %, Z-score = 0.8 σ
+  -> Výsledek je V SHODĚ s tabulkovou hodnotou (v rámci 2σ).
+
+===========================================================
+ VARIANTA B: BEZ ANOMÁLNÍHO MĚŘENÍ 2
+===========================================================
+  Průměrná aktivita: A_průměr = 2.2+/-0.1 μm^2/s
+  Avogadrova konst.: N_A      = (6.0+/-0.5)e+23 mol^-1
+  Odchylka od N_A_tab: δ = 0.2 %, Z-score = 0.0 σ
+  -> Výsledek je V SHODĚ s tabulkovou hodnotou (v rámci 2σ).
+===========================================================
