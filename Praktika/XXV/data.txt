@@ -1,0 +1,66 @@
+# ==============================================================================
+# EXPERIMENT: Studium tlumených a nucených kmitů
+# ÚLOHA: 25
+# EXPERIMENTÁTOR: Lukáš Hrdý
+# DATUM: 16. 3. 2026
+# ==============================================================================
+
+[Podminky]
+# Veličina | Jednotka | Začátek | Konec
+Teplota | °C | 22.1 | 22.3
+Tlak | hPa | 1013 | 1013
+Vlhkost | % | 45 | 46
+
+[Pristroje]
+# Název přístroje | Měřená veličina | Rozsah | Nejistota (systémová)
+Souprava ISES siloměr | Síla | 1 N | 0.01
+Generátor frekvence | Frekvence | 10 Hz | 0.005
+Posuvné měřítko | Délka | 150 mm | 0.05
+
+# ==============================================================================
+# DATA 1: VLASTNÍ KMITY (Netlumené a tlumené - měření periody)
+# ==============================================================================
+[Vlastni_kmity]
+# Zapiš CELKOVÝ změřený čas (t_celk) a počet kmitů (N). Skript sám vypočítá periodu T = t/N.
+# Nejistotu odhadni pro celkový čas t_celk (např. reakční doba nebo chyba kurzoru ISES).
+# T_0 = netlumené kmity (s přívažkem místo disku)
+# T_1 = tlumené kmity (s tlumícím diskem)
+# Veličina | Celkový čas t_celk [s] | Nejistota t_celk [s] | Počet kmitů N | Jednotka
+# --- Měření netlumených kmitů (přívažek) ---
+T_0 | 8.520 | 0.050 | 10 | s
+T_0 | 8.540 | 0.050 | 10 | s
+T_0 | 8.510 | 0.050 | 10 | s
+
+# --- Měření tlumených kmitů (tlumící disk) ---
+T_1 | 8.650 | 0.050 | 10 | s
+T_1 | 8.670 | 0.050 | 10 | s
+
+# ==============================================================================
+# DATA 2: ÚTLUM (Pro určení konstanty tlumení delta z exponenciály)
+# ==============================================================================
+[Utlum]
+# Hodnoty lokálních maxim (amplitud) v čase pro tlumené kmity.
+# Pokud měření opakuješ, prostě zapiš další sadu t a A pod sebe. Skript proloží
+# exponenciálu všemi body (vytvoří mrak bodů).
+# t_s [s] | A_N [N]
+# --- 1. Měření ---
+0.000 | 0.450
+0.865 | 0.385
+1.730 | 0.332
+2.595 | 0.285
+
+# ==============================================================================
+# DATA 3: NUCENÉ KMITY (Rezonanční křivka)
+# ==============================================================================
+[Nucene_kmity]
+# Zde můžeš přidávat libovolný počet řádků pro zahuštění měření kolem rezonance 
+# f_Hz[Hz] | A_N [N] | phi_rad [rad]
+0.80 | 0.150 | -0.10
+0.90 | 0.200 | -0.25
+1.00 | 0.400 | -0.50
+1.10 | 0.850 | -1.10
+1.15 | 1.150 | -1.57
+1.20 | 0.900 | -2.10
+1.30 | 0.450 | -2.60
+1.40 | 0.250 | -2.90
+1.50 | 0.180 | -3.05
