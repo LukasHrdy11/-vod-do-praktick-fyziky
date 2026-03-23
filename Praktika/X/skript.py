@@ -76,7 +76,7 @@ def analyze():
     lam_mosaz = 2 * l_tyc
     lam_vzduch = (2 * vzdal_d) / k_kundt
     
-    # Empirický výpočet referenční rychlosti zvuku ve vzduchu (cca pro 50% vlhkost)
+    # Empirický výpočet referenční rychlosti zvuku ve vzduchu 
     c_vzduch_ref = 331.82 + 0.61 * t
     
     # Rychlost zvuku v mosazi a Youngův modul
