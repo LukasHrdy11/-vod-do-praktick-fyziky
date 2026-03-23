@@ -5,16 +5,22 @@
 # DATUM: 16. 3. 2026
 # ==============================================================================
 
+[Odchylky]
+# Název odchylky | Hodnota | Jednotka
+chyba určení času | 0.01 | s
+chyba určení frekvence | 0.001 | Hz
+chyba určení síly | 0.01 | N
+
 [Podminky]
 # Veličina | Jednotka | Začátek | Konec
-Teplota | °C | 22.1 | 22.3
-Tlak | hPa | 1013 | 1013
-Vlhkost | % | 45 | 46
+Teplota | °C | 22.6 | 22.3
+Tlak | hPa | 995.7 | 1013
+Vlhkost | % | 26.8 | 46
 
 [Pristroje]
 # Název přístroje | Měřená veličina | Rozsah | Nejistota (systémová)
 Souprava ISES siloměr | Síla | 1 N | 0.01
-Generátor frekvence | Frekvence | 10 Hz | 0.005
+Generátor frekvence | Frekvence | 10 Hz | 0.0005
 Posuvné měřítko | Délka | 150 mm | 0.05
 
 # ==============================================================================
@@ -22,32 +28,64 @@ Posuvné měřítko | Délka | 150 mm | 0.05
 # ==============================================================================
 [Vlastni_kmity]
 # Zapiš CELKOVÝ změřený čas (t_celk) a počet kmitů (N). Skript sám vypočítá periodu T = t/N.
-# Nejistotu odhadni pro celkový čas t_celk (např. reakční doba nebo chyba kurzoru ISES).
+# Nejistota se automaticky načítá ze sekce [Odchylky].
 # T_0 = netlumené kmity (s přívažkem místo disku)
 # T_1 = tlumené kmity (s tlumícím diskem)
-# Veličina | Celkový čas t_celk [s] | Nejistota t_celk [s] | Počet kmitů N | Jednotka
+# Veličina | Celkový čas t_celk [s] | Počet kmitů N | Jednotka
 # --- Měření netlumených kmitů (přívažek) ---
-T_0 | 8.520 | 0.050 | 10 | s
-T_0 | 8.540 | 0.050 | 10 | s
-T_0 | 8.510 | 0.050 | 10 | s
+T_0 | 9.157 | 10 | s
+T_0 | 9.176 | 10 | s
+T_0 | 9.179 | 10 | s
+T_0 | 9.167 | 10 | s
+T_0 | 9.179 | 10 | s
 
 # --- Měření tlumených kmitů (tlumící disk) ---
-T_1 | 8.650 | 0.050 | 10 | s
-T_1 | 8.670 | 0.050 | 10 | s
+T_1 | 9.235 | 10 | s
+T_1 | 9.260 | 10 | s
+T_1 | 9.241 | 10 | s
+T_1 | 9.235 | 10 | s
+T_1 | 9.245 | 10 | s
 
 # ==============================================================================
 # DATA 2: ÚTLUM (Pro určení konstanty tlumení delta z exponenciály)
 # ==============================================================================
 [Utlum]
 # Hodnoty lokálních maxim (amplitud) v čase pro tlumené kmity.
-# Pokud měření opakuješ, prostě zapiš další sadu t a A pod sebe. Skript proloží
-# exponenciálu všemi body (vytvoří mrak bodů).
 # t_s [s] | A_N [N]
 # --- 1. Měření ---
-0.000 | 0.450
-0.865 | 0.385
-1.730 | 0.332
-2.595 | 0.285
+0.571 | 0.92930
+1.508 | 0.86195
+2.421 | 0.80301
+3.354 | 0.76302
+4.291 | 0.71461
+5.191 | 0.66199
+6.132 | 0.63884
+7.051 | 0.60887
+7.976 | 0.57223
+8.902 | 0.54292
+9.832 | 0.52240
+10.753 | 0.48430
+11.683 | 0.46231
+12.591 | 0.44766
+13.525 | 0.43007
+14.458 | 0.41152
+15.374 | 0.39842
+16.301 | 0.38423
+17.217 | 0.35258
+18.156 | 0.34058
+19.060 | 0.33839
+19.965 | 0.31766
+20.920 | 0.30129
+21.831 | 0.29851
+22.770 | 0.28728
+23.689 | 0.26707
+24.590 | 0.26109
+25.535 | 0.26184
+26.461 | 0.23938
+27.386 | 0.23340
+28.280 | 0.23639
+29.225 | 0.22217
+30.132 | 0.20945
 
 # ==============================================================================
 # DATA 3: NUCENÉ KMITY (Rezonanční křivka)
@@ -55,12 +93,14 @@ T_1 | 8.670 | 0.050 | 10 | s
 [Nucene_kmity]
 # Zde můžeš přidávat libovolný počet řádků pro zahuštění měření kolem rezonance 
 # f_Hz[Hz] | A_N [N] | phi_rad [rad]
-0.80 | 0.150 | -0.10
-0.90 | 0.200 | -0.25
-1.00 | 0.400 | -0.50
-1.10 | 0.850 | -1.10
-1.15 | 1.150 | -1.57
-1.20 | 0.900 | -2.10
-1.30 | 0.450 | -2.60
-1.40 | 0.250 | -2.90
-1.50 | 0.180 | -3.05
+1.09 | 0.0793 | -2.74
+1.08 | 0.0627 | -0.98
+1.10 | 0.0252 | -3.54
+1.07 | 0.0207 | -0.44
+1.11 | 0.0108 | -3.53
+1.085 | 0.0923 | -1.54
+1.095 | 0.0354 |-3.23
+1.087 | 0.0920 | -2.00
+1.083 | 0.0773 | -1.20
+1.084 | 0.08429 | -1.34
+1.075 | 0.02552 | -0.55

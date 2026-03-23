@@ -1,0 +1,69 @@
+# ==========================================================
+# NÁZEV: Rychlost šíření zvuku
+# ČÍSLO ÚLOHY: 10
+# EXPERIMENTÁTOR: Lukáš Hrdý
+# DATUM MĚŘENÍ: 24. 3. 2026
+# ==========================================================
+
+[PODMINKY]
+# teplota [C], tlak[hPa], vlhkost[%]
+t = 22.5
+p = 1001.8
+vlhkost = 50.0
+
+[PRISTROJE]
+# Zde pouze pro záznam do protokolu (skript tento blok přeskočí)
+# - Svinovací metr (rozsah 2 m, nejistota 1 mm)
+# - RC generátor
+# - Multimetr (měření frekvence)
+# - Uzavřený rezonátor
+# - Kundtova trubice
+
+[NEJISTOTY]
+# Nejistoty přímo měřených veličin (absolutní chyby, typ B)
+err_t = 0.5         # nejistota teploty [C]
+err_l_tyc = 0.001   # nejistota délky mosazné tyče [m]
+err_d = 0.002       # nejistota odečtu vzdálenosti uzlů v trubici[m]
+err_l_rez = 0.002   # nejistota odečtu délek na rezonátoru [m]
+err_f = 0.5         # nejistota odečtu frekvence [Hz]
+
+[KONSTANTY]
+rho_mosaz = 8600    # hustota mosazi [kg/m^3]
+err_rho = 50        # nejistota hustoty mosazi [kg/m^3]
+mu_co2 = 0.04401    # molární hmotnost CO2[kg/mol]
+R = 8.314           # univerzální plynová konstanta[J/(mol*K)]
+
+[KUNDTOVA_TRUBICE]
+# l_tyc [m], d [m] (vzdálenost k uzlů), k (počet uzlů/kmiten)
+l_tyc = 1.510
+d = 0.620
+k = 4
+
+[REZONATOR_VZDUCH]
+# Konstantní délka uzavřeného rezonátoru [m]
+l_rez = 0.790
+# Měřená data: k (počet půlvln), f (frekvence [Hz])
+1, 214.4
+2, 438.3
+3, 653.9
+4, 871.0
+5, 1084.2
+6, 1302.6
+7, 1524.4
+
+[REZONATOR_CO2]
+# Měřená data: k (počet půlvln), f (frekvence [Hz])
+1, 163.9
+2, 340.5
+3, 510.0
+4, 678.4
+5, 842.7
+6, 1013.6
+7, 1185.4
+
+[REZONATOR_PROM_DELKA]
+# Měření při konstantní frekvenci (pouze vzduch)
+# f_konst[Hz]
+f_konst = 2385.0
+# Naměřené délky, při kterých nastala rezonance [m] (oddělené čárkou)
+delky = 0.860, 0.789, 0.717
