@@ -7,63 +7,78 @@
 
 [PODMINKY]
 # teplota [C], tlak[hPa], vlhkost[%]
-t = 22.5 (zjistit nejistotu pro teplotu)
-p = 1001.8
-vlhkost = 50.0
+t = 24.5 
+p = 991.1
+vlhkost = 29.5
 
 [PRISTROJE]
-# Zde pouze pro záznam do protokolu (skript tento blok přeskočí)
-# - Svinovací metr (rozsah 2 m, nejistota 1 mm)
-# - RC generátor
+# - pásové měřidlo (rozsah 2 m, nejistota 1 mm)
+# - Mosazná tyč
+# - Mikroampérmetr Metra
+# - RC generátor Tesla
 # - Multimetr (měření frekvence)
 # - Uzavřený rezonátor
 # - Kundtova trubice
+# - Comet C1430 termo-hydro-barometr
+# - Tlaková láhev CO2
+# - balónek
+# - korková drť
+# - kalafuna
+# - plsť
 
 [NEJISTOTY]
 # Nejistoty přímo měřených veličin (absolutní chyby, typ B)
-err_t = 0.5         # nejistota teploty [C]
+err_t = 0.4         # nejistota teploty [C]
 err_l_tyc = 0.001   # nejistota délky mosazné tyče [m]
-err_d = 0.002       # nejistota odečtu vzdálenosti uzlů v trubici[m]
-err_l_rez = 0.002   # nejistota odečtu délek na rezonátoru [m]
-err_f = 0.5         # nejistota odečtu frekvence [Hz]
+err_d = 0.003       # nejistota odečtu vzdálenosti uzlů v trubici[m]
+err_l_rez = 0.001   # nejistota odečtu délek na rezonátoru [m]
+err_f = 5           # nejistota odečtu frekvence [Hz]
 
 [KONSTANTY]
-rho_mosaz = 8600    # hustota mosazi [kg/m^3]
-err_rho = 50        # nejistota hustoty mosazi [kg/m^3]
+rho_mosaz = 8550    # hustota mosazi [kg/m^3]
+err_rho = 100       # nejistota hustoty mosazi [kg/m^3]
 mu_co2 = 0.04401    # molární hmotnost CO2[kg/mol]
 R = 8.314           # univerzální plynová konstanta[J/(mol*K)]
+l_rez = 0.80        # Konstantní délka uzavřeného rezonátoru [m]
+l_tyc = 1.605       # délka mosazné tyče
+f_konst = 2406      # Frekvence pro měření s konstantní frekvencí [Hz]
 
-[KUNDTOVA_TRUBICE]
-# l_tyc [m], d [m] (vzdálenost k uzlů), k (počet uzlů/kmiten)
-l_tyc = 1.510
-d = 0.620
-k = 4
+[KUNDTOVA_TRUBICE_MERENI]
+# l_dutina (m), d (m), k (pocet pulvln)
+0.76, 0.58, 4
+0.61, 0.44, 3
 
 [REZONATOR_VZDUCH]
-# Konstantní délka uzavřeného rezonátoru [m]
-l_rez = 0.790
 # Měřená data: k (počet půlvln), f (frekvence [Hz])
-1, 214.4
-2, 438.3
-3, 653.9
-4, 871.0
-5, 1084.2
-6, 1302.6
-7, 1524.4
+1, 210
+2, 432
+3, 647
+4, 856
+5, 1075
+6, 1283
+7, 1499
+8, 1711
+9, 1924
+10, 2138
 
 [REZONATOR_CO2]
 # Měřená data: k (počet půlvln), f (frekvence [Hz])
-1, 163.9
-2, 340.5
-3, 510.0
-4, 678.4
-5, 842.7
-6, 1013.6
-7, 1185.4
+1, 165
+2, 340
+3, 505
+4, 668
+5, 836
+6, 1005
+7, 1174
+8, 1338
+9, 1506
+10, 1672
+11, 1846
+12, 2010
+13, 2178
+14, 2346
 
 [REZONATOR_PROM_DELKA]
-# Měření při konstantní frekvenci (pouze vzduch)
-# f_konst[Hz]
-f_konst = 2385.0
+# Měření při konstantní frekvenci 
 # Naměřené délky, při kterých nastala rezonance [m] (oddělené čárkou)
-delky = 0.860, 0.789, 0.717
+delky = 0.711, 0.783, 0.855
