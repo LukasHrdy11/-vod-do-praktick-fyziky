@@ -1,0 +1,114 @@
+# =============================================================================
+# HLAVIČKA SOUBORU
+# =============================================================================
+Nazev_experimentu: Studium harmonických kmitů mechanického oscilátoru
+Cislo_ulohy: II
+Experimentator: Lukáš Hrdý
+Datum_mereni: 31. 3. 2026
+
+# =============================================================================
+# LABORATORNÍ PODMÍNKY
+# =============================================================================
+# Teplota v °C, tlak v hPa, vlhkost v %.
+Teplota_C: 22.0
+Tlak_hPa: 994.3
+Vlhkost_procenta: 25.7
+
+# =============================================================================
+# POUŽITÉ PŘÍSTROJE A SOFTWARE
+# =============================================================================
+Pristroje: Katetometr s vernierovou stupnicí, čidlo polohy a pohybu Go!Motion, sada 5 pružin, sada závaží
+Software: Logger Lite (sběr dat ze sonaru), Python 3 (numerická analýza a regrese)
+
+# =============================================================================
+# NEJISTOTY PŘÍSTROJŮ A VELIČIN
+# =============================================================================
+# Tyto hodnoty si skript načte a bude je propagovat do všech dalších výpočtů.
+# Lze je přepsat podle reálně použitých přístrojů na místě.
+chyba_m_g: 0.1          # Nejistota vážení závaží v gramech
+chyba_h_mm: 1.0         # Nejistota odečtu katetometru v mm (1 mm doporučeno kvůli otřesům podlahy)
+chyba_t_s: 0.04         # Časové rozlišení (vzorkovací frekvence) čidla Go!Motion v sekundách
+chyba_g_ms2: 0.001      # Tabelovaná nejistota referenčního tíhového zrychlení (m/s^2)
+g_tabulkove_ms2: 9.811  # Referenční hodnota místního tíhového zrychlení 
+
+# =============================================================================
+# STATICKÁ METODA
+# =============================================================================
+# Tabulka 1: Měření poklesu rovnovážné polohy
+# pruzina    : Označení měřené pružiny (např. A, B, C, D, E).
+# m_g        : Hmotnost zavěšeného závaží v gramech (g).
+# h_nezat_cm : Výšková poloha dolního konce nezatížené pružiny v centimetrech (cm).
+# h_zat_cm   : Výšková poloha dolního konce zatížené pružiny v centimetrech (cm).
+
+[DATA_STATIKA]
+pruzina, m_g, h_nezat_cm, h_zat_cm
+A, 250, 50.0, 46.2
+A, 300, 50.0, 45.2
+A, 400, 50.0, 43.2
+A, 500, 50.0, 41.1
+A, 600, 50.0, 39.2
+A, 700, 50.0, 37.1
+B, 100, 46.6, 43.2
+B, 200, 46.6, 39.8 
+B, 250, 46.6, 38.1
+B, 300, 46.6, 36.6
+B, 400, 46.6, 33.3
+B, 500, 46.6, 29.9
+C, 100, 50.4, 45.2
+C, 200, 50.4, 40.1
+C, 300, 50.4, 35.1
+C, 400, 50.4, 30.1
+C, 500, 50.4, 25.0
+C, 600, 50.4, 20.0
+D, 50, 52.2, 45.2
+D, 100, 52.2, 38.4
+D, 200, 52.2, 25.0
+D, 250, 52.2, 18.4
+D, 300, 52.2, 11.6
+E, 200, 59.0, 55.6 
+E, 250, 59.0, 54.3
+E, 300, 59.0, 53.1
+E, 400, 59.0, 50.7
+E, 500, 59.0, 48.3
+E, 600, 59.0, 45.9
+
+# =============================================================================
+# DYNAMICKÁ METODA
+# =============================================================================
+# Tabulka 2: Měření periody kmitů senzorem Go!Motion
+# pruzina : Označení měřené pružiny (A, B, C, D, E).
+# m_g     : Hmotnost zavěšeného závaží v gramech (g). Zkuste zajistit překryv se statickou metodou.
+# t1_s    : Čas vybraného počátečního maxima výchylky ze záznamu v sekundách (s).
+# t2_s    : Čas vybraného koncového maxima výchylky v sekundách (s).
+# n       : Skutečný počet period kmitů, které proběhly mezi časem t1 a t2.
+
+[DATA_DYNAMIKA]
+pruzina, m_g, t1_s, t2_s, n
+A, 250, 1.60, 6.00, 10
+A, 300, 1.60, 6.54, 10
+A, 400, 2.26, 7.98, 10
+A, 500, 1.24, 7.64, 10
+A, 600, 2.92, 9.92, 10
+A, 700, 2.32, 9.88, 10
+B, 100, 3.64, 7.32, 10
+B, 200, 1.00, 4.64, 7
+B, 300, 3.20, 9.52, 10
+B, 400, 2.28, 9.56, 10
+B, 500, 1.76, 9.88, 10
+C, 200, 2.72, 9.16, 10
+C, 250, 1.60, 8.76, 10
+C, 300, 2.48, 10.32, 10
+C, 400, 1.08, 10.12, 10
+C, 500, 2.36, 12.44, 10
+C, 600, 1.36, 12.40, 10
+D, 50, 3.28, 8.60, 10
+D, 100, 2.20, 9.68, 10
+D, 200, 1.24, 11.68, 10
+D, 250, 1.40, 13.08, 10
+D, 300, 1.6, 14.32, 10
+E, 200, 1.22, 5.64, 10
+E, 250, 1.36, 6.32, 10
+E, 300, 1.60, 7.00, 10
+E, 400, 1.84, 8.04, 10
+E, 500, 1.40, 8.36, 10
+E, 600, 1.64, 9.20, 10

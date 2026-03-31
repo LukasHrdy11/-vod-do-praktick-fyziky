@@ -40,7 +40,7 @@ err_rho = 100       # nejistota hustoty mosazi [kg/m^3]
 mu_co2 = 0.04401    # molární hmotnost CO2[kg/mol]
 R = 8.314           # univerzální plynová konstanta[J/(mol*K)]
 l_rez = 0.80        # Konstantní délka uzavřeného rezonátoru [m]
-l_tyc = 1.605       # délka mosazné tyče
+l_tyc = 1.505       # délka mosazné tyče
 f_konst = 2406      # Frekvence pro měření s konstantní frekvencí [Hz]
 
 [KUNDTOVA_TRUBICE_MERENI]

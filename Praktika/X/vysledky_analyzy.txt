@@ -5,21 +5,23 @@ VÝSLEDKY ANALÝZY: Rychlost šíření zvuku
 --- 1. KUNDTOVA TRUBICE ---
 Zaznamenaných délek dutiny: 2
 Z toho proměřených rezonancí (k > 0): 2
-Vlnová délka v mosazi:    lambda_1 = 3.210+/-0.002 m
+Vlnová délka v mosazi:    lambda_1 = 3.010+/-0.002 m
 Vlnová délka ve vzduchu (průměr): lambda_2 = 0.292+/-0.001 m
-Teoretická ref. rychlost: c_vzd_ref = 346.8+/-0.2 m/s
-Rychlost zvuku v mosazi:  c_mosaz = (3.82+/-0.02)e+03 m/s
-Youngův modul (mosaz):    E = (1.25+/-0.02)e+11 Pa
+Teoretická ref. rychlost (suchý vzduch): c_vzd_ref = 346.8+/-0.2 m/s
+Rychlost zvuku v mosazi:  c_mosaz = (3.58+/-0.02)e+03 m/s
+Youngův modul (mosaz):    E = (1.09+/-0.02)e+11 Pa
 
 --- 2. UZAVŘENÝ REZONÁTOR (Lineární regrese, proměnná f) ---
-Model fitu: k = a * f + b
+Model fitu: f = a * k + b   =>   c = 2*l*a
 VZDUCH:
-  Směrnice a = 0.004680+/-0.000008 s
-  Rychlost zvuku: c_vzd = 341.9+/-0.7 m/s
+  Směrnice a = 213.7+/-0.6 Hz
+  Absolutní člen b = 2+/-3 Hz
+  Rychlost zvuku: c_vzd = 342+/-1 m/s
 
 OXID UHLIČITÝ (CO2):
-  Směrnice a = 0.005970+/-0.000006 s
-  Rychlost zvuku: c_CO2 = 268.0+/-0.4 m/s
+  Směrnice a = 167.5+/-0.3 Hz
+  Absolutní člen b = 0+/-3 Hz
+  Rychlost zvuku: c_CO2 = 268.0+/-0.6 m/s
 
 --- 3. UZAVŘENÝ REZONÁTOR (Proměnná délka, konst. f) ---
 Průměrný rozdíl délek:    delta_l = 0.072+/-0.001 m
@@ -27,4 +29,4 @@ Rychlost zvuku (vzduch):  c_vzd_delka = 346+/-5 m/s
 
 --- 4. POISSONOVA KONSTANTA ---
 Termodynamická teplota:    T = 297.6+/-0.4 K
-Poissonova konst. CO2:     kappa = 1.277+/-0.004
+Poissonova konst. CO2:     kappa = 1.277+/-0.006

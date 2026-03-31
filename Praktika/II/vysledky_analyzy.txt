@@ -1,0 +1,28 @@
+=== VÝSLEDKY EXPERIMENTU ===
+Zpracováno pro experiment: Studium harmonických kmitů mechanického oscilátoru
+Experimentátor: Lukáš Hrdý
+=================================================================
+
+--- 1. TUHOST PRUŽIN (Statická metoda) ---
+Rovnice regrese: F = k*y + b
+Pružina    | Tuhost k (N/m)            | Posun b (N)              
+-----------------------------------------------------------------
+A          | 48.60 ± 0.01              | 0.609 ± 0.001            
+B          | 29.676 ± 0.010            | -0.042 ± 0.001           
+C          | 19.477 ± 0.005            | -0.0362 ± 0.0010         
+D          | 7.314 ± 0.004             | -0.0245 ± 0.0010         
+E          | 40.61 ± 0.01              | 0.559 ± 0.001            
+
+--- 2. TUHOST PRUŽIN (Dynamická metoda) ---
+Rovnice regrese: ω = √k * (1/√m) + b
+Pružina    | Tuhost k (N/m)            | Posun b (1/s)            
+-----------------------------------------------------------------
+A          | 51 ± 2                    | -0.3 ± 0.2               
+B          | 28 ± 1                    | 0.2 ± 0.2                
+C          | 18.7 ± 0.6                | 0.1 ± 0.1                
+D          | 6.7 ± 0.2                 | 0.20 ± 0.07              
+E          | 39 ± 2                    | 0.3 ± 0.2                
+
+--- 3. MÍSTNÍ TÍHOVÉ ZRYCHLENÍ (Kombinovaná metoda) ---
+Vypočtené g = 9.48 ± 0.03 m/s^2
+(Tabelované g = 9.811 ± 0.001 m/s^2)

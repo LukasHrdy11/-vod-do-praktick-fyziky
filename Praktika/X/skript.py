@@ -28,14 +28,14 @@ def load_data(filename):
             # Detekce sekcí
             if line.startswith('[') and line.endswith(']'):
                 current_section = line[1:-1]
-                if current_section in ['REZONATOR_VZDUCH', 'REZONATOR_CO2']:
+                if current_section in['REZONATOR_VZDUCH', 'REZONATOR_CO2']:
                     data['tables'][current_section] = {'k':[], 'f':[]}
                 elif current_section == 'KUNDTOVA_TRUBICE_MERENI':
                     data['tables'][current_section] = {'l_dutina':[], 'd':[], 'k':[]}
                 continue
             
             # Načítání skalárních hodnot (a textového seznamu délek)
-            if current_section in ['PODMINKY', 'NEJISTOTY', 'KONSTANTY', 'KUNDTOVA_TRUBICE_PARAMETRY', 'REZONATOR_PROM_DELKA']:
+            if current_section in['PODMINKY', 'NEJISTOTY', 'KONSTANTY', 'KUNDTOVA_TRUBICE_PARAMETRY', 'REZONATOR_PROM_DELKA']:
                 if '=' in line:
                     key, val = line.split('=', 1)
                     key = key.strip()
@@ -48,7 +48,7 @@ def load_data(filename):
                 continue
             
             # Načítání tabulek pro rezonátor
-            if current_section in ['REZONATOR_VZDUCH', 'REZONATOR_CO2']:
+            if current_section in['REZONATOR_VZDUCH', 'REZONATOR_CO2']:
                 parts = line.split(',')
                 if len(parts) == 2:
                     data['tables'][current_section]['k'].append(float(parts[0].strip()))
@@ -84,7 +84,7 @@ def analyze():
     lam_mosaz = 2 * l_tyc
     
     kundt_data = d['tables']['KUNDTOVA_TRUBICE_MERENI']
-    lam_vzduch_list = []
+    lam_vzduch_list =[]
     
     # Výpočet vlnové délky pro body, kde byl odečten počet půlvln (k > 0)
     for i in range(len(kundt_data['k'])):
@@ -101,27 +101,40 @@ def analyze():
         print("CHYBA: V datech pro Kundtovu trubici není zaznamenáno žádné platné měření (k > 0)!")
         lam_vzduch = ufloat(1, 0) # Dummy hodnota pro zabránění pádu skriptu
     
+    # Referenční rychlost ve vzduchu - model suchého vzduchu c = 331,82 + 0,61*t
     c_vzduch_ref = 331.82 + 0.61 * t
+    
     c_mosaz = c_vzduch_ref * (lam_mosaz / lam_vzduch)
     E_mosaz = (c_mosaz**2) * rho_mosaz
     
     # --- B) UZAVŘENÝ REZONÁTOR (REGRESE - PROMĚNNÁ FREKVENCE) ---
-    l_rez = ufloat(s.get('l_rez', 0.5), s.get('err_l_rez', 0.002))
+    l_rez = ufloat(s.get('l_rez', 0.8), s.get('err_l_rez', 0.001))
+    err_f_val = s.get('err_f', 5.0)  # Výchozí chyba frekvence 5 Hz
     
-    def linear_fit(x, a, b):
-        return a * x + b
+    # Regresní funkce s osami prohozenými pro správný statistický model (f na ose Y, k na ose X)
+    def linear_fit(k, a, b):
+        return a * k + b
 
+    # Vzduch
     f_vzd = np.array(d['tables']['REZONATOR_VZDUCH']['f'])
     k_vzd = np.array(d['tables']['REZONATOR_VZDUCH']['k'])
-    popt_vzd, pcov_vzd = curve_fit(linear_fit, f_vzd, k_vzd)
-    a_vzd = ufloat(popt_vzd[0], np.sqrt(pcov_vzd[0][0])) 
-    c_vzduch_rez = (2 * l_rez) / a_vzd
+    sigma_vzd = np.full(len(f_vzd), err_f_val)
     
+    popt_vzd, pcov_vzd = curve_fit(linear_fit, k_vzd, f_vzd, sigma=sigma_vzd, absolute_sigma=True)
+    a_vzd = ufloat(popt_vzd[0], np.sqrt(pcov_vzd[0][0]))
+    b_vzd = ufloat(popt_vzd[1], np.sqrt(pcov_vzd[1][1]))
+    # Teoretický vztah: c = 2*l*f/k => f = (c/2l)*k => a = c/(2l) => c = 2*l*a
+    c_vzduch_rez = 2 * l_rez * a_vzd
+    
+    # CO2
     f_co2 = np.array(d['tables']['REZONATOR_CO2']['f'])
     k_co2 = np.array(d['tables']['REZONATOR_CO2']['k'])
-    popt_co2, pcov_co2 = curve_fit(linear_fit, f_co2, k_co2)
+    sigma_co2 = np.full(len(f_co2), err_f_val)
+    
+    popt_co2, pcov_co2 = curve_fit(linear_fit, k_co2, f_co2, sigma=sigma_co2, absolute_sigma=True)
     a_co2 = ufloat(popt_co2[0], np.sqrt(pcov_co2[0][0]))
-    c_co2_rez = (2 * l_rez) / a_co2
+    b_co2 = ufloat(popt_co2[1], np.sqrt(pcov_co2[1][1]))
+    c_co2_rez = 2 * l_rez * a_co2
 
     # --- C) UZAVŘENÝ REZONÁTOR (PROMĚNNÁ DÉLKA - VZDUCH) ---
     f_konst = ufloat(s['f_konst'], s['err_f'])
@@ -140,26 +153,34 @@ def analyze():
     # 4. GENEROVÁNÍ GRAFU
     # ==========================================
     plt.figure(figsize=(8, 6))
-    err_f_val = s.get('err_f', 0)
-    err_k_val = s.get('err_k', 0)
     
-    # Data a fit pro vzduch
-    plt.errorbar(f_vzd, k_vzd, xerr=err_f_val, yerr=err_k_val, fmt='o', color='blue', 
+    # --- Data a fit pro vzduch ---
+    plt.errorbar(k_vzd, f_vzd, yerr=err_f_val, fmt='o', color='blue', 
                  label='Vzduch (data)', capsize=3, linestyle='None')
-    f_fit_vzd = np.linspace(min(f_vzd)*0.9, max(f_vzd)*1.1, 100)
-    plt.plot(f_fit_vzd, linear_fit(f_fit_vzd, *popt_vzd), color='blue', linestyle='--', label='Vzduch (fit)')
+    k_fit_vzd = np.linspace(min(k_vzd)-0.5, max(k_vzd)+0.5, 100)
     
-    # Data a fit pro CO2
-    plt.errorbar(f_co2, k_co2, xerr=err_f_val, yerr=err_k_val, fmt='s', color='red', 
+    # Dynamické sestavení textu rovnice pro legendu (vytažení hodnot z ufloat)
+    label_fit_vzd = r'Vzduch (fit): $f = (%.1f \pm %.1f)\,k + (%.0f \pm %.0f)\,\mathrm{Hz}$' % (a_vzd.n, a_vzd.s, b_vzd.n, b_vzd.s)
+    plt.plot(k_fit_vzd, linear_fit(k_fit_vzd, *popt_vzd), color='blue', linestyle='--', label=label_fit_vzd)
+    
+    # --- Data a fit pro CO2 ---
+    plt.errorbar(k_co2, f_co2, yerr=err_f_val, fmt='s', color='red', 
                  label='CO$_2$ (data)', capsize=3, linestyle='None')
-    f_fit_co2 = np.linspace(min(f_co2)*0.9, max(f_co2)*1.1, 100)
-    plt.plot(f_fit_co2, linear_fit(f_fit_co2, *popt_co2), color='red', linestyle='--', label='CO$_2$ (fit)')
+    k_fit_co2 = np.linspace(min(k_co2)-0.5, max(k_co2)+0.5, 100)
     
-    plt.xlabel('f / Hz', fontsize=12)
-    plt.ylabel('k', fontsize=12)
+    # Dynamické sestavení textu rovnice pro legendu (vytažení hodnot z ufloat)
+    label_fit_co2 = r'CO$_2$ (fit): $f = (%.1f \pm %.1f)\,k + (%.0f \pm %.0f)\,\mathrm{Hz}$' % (a_co2.n, a_co2.s, b_co2.n, b_co2.s)
+    plt.plot(k_fit_co2, linear_fit(k_fit_co2, *popt_co2), color='red', linestyle='--', label=label_fit_co2)
+    
+    # --- Formátování grafu ---
+    plt.xlabel('Řád rezonance $k$', fontsize=12)
+    plt.ylabel('Rezonanční frekvence $f$ / Hz', fontsize=12)
     plt.grid(True, linestyle=':', alpha=0.7)
-    plt.legend(loc='upper left', frameon=True)
+    
+    # Umístění legendy s mírně menším písmem, aby se rovnice dobře vešly
+    plt.legend(loc='lower right', frameon=True, fontsize=10)
     plt.tight_layout()
+    
     plt.savefig(PLOT_FILE)
     print(f"Graf byl uložen jako: {PLOT_FILE}")
 
@@ -176,17 +197,19 @@ def analyze():
         f.write(f"Z toho proměřených rezonancí (k > 0): {len(lam_vzduch_list)}\n")
         f.write(f"Vlnová délka v mosazi:    lambda_1 = {lam_mosaz:.1u} m\n")
         f.write(f"Vlnová délka ve vzduchu (průměr): lambda_2 = {lam_vzduch:.1u} m\n")
-        f.write(f"Teoretická ref. rychlost: c_vzd_ref = {c_vzduch_ref:.1u} m/s\n")
+        f.write(f"Teoretická ref. rychlost (suchý vzduch): c_vzd_ref = {c_vzduch_ref:.1u} m/s\n")
         f.write(f"Rychlost zvuku v mosazi:  c_mosaz = {c_mosaz:.1u} m/s\n")
         f.write(f"Youngův modul (mosaz):    E = {E_mosaz:.1u} Pa\n\n")
         
         f.write("--- 2. UZAVŘENÝ REZONÁTOR (Lineární regrese, proměnná f) ---\n")
-        f.write("Model fitu: k = a * f + b\n")
+        f.write("Model fitu: f = a * k + b   =>   c = 2*l*a\n")
         f.write(f"VZDUCH:\n")
-        f.write(f"  Směrnice a = {a_vzd:.1u} s\n")
+        f.write(f"  Směrnice a = {a_vzd:.1u} Hz\n")
+        f.write(f"  Absolutní člen b = {b_vzd:.1u} Hz\n")
         f.write(f"  Rychlost zvuku: c_vzd = {c_vzduch_rez:.1u} m/s\n\n")
         f.write(f"OXID UHLIČITÝ (CO2):\n")
-        f.write(f"  Směrnice a = {a_co2:.1u} s\n")
+        f.write(f"  Směrnice a = {a_co2:.1u} Hz\n")
+        f.write(f"  Absolutní člen b = {b_co2:.1u} Hz\n")
         f.write(f"  Rychlost zvuku: c_CO2 = {c_co2_rez:.1u} m/s\n\n")
         
         f.write("--- 3. UZAVŘENÝ REZONÁTOR (Proměnná délka, konst. f) ---\n")
