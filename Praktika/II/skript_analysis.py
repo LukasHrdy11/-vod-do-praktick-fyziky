@@ -58,12 +58,12 @@ def lin_fit_affine(x, a, b):
     """ Funkce pro afinní fit: y = ax + b """
     return a * x + b
 
-def format_eq_b(b):
+def format_eq_b(b, dec=2):
     """ Zformátuje absolutní člen pro legendu (vyhne se zápisu '+ (-x)') """
     if b >= 0:
-        return f"+ {b:.2f}"
+        return f"+ {b:.{dec}f}"
     else:
-        return f"- {abs(b):.2f}"
+        return f"- {abs(b):.{dec}f}"
 
 # =============================================================================
 # 3) NAČÍTÁNÍ DAT
@@ -167,19 +167,30 @@ for p in pruziny_stat:
     F_vals, y0_vals = np.array(F_vals), np.array(y0_vals)
     F_errs, y0_errs = np.array(F_errs), np.array(y0_errs)
     
-    scatter = ax.errorbar(y0_vals, F_vals, xerr=y0_errs, yerr=F_errs, fmt='o', capsize=3, elinewidth=1.2, label=f'Pružina {p} (data)')
+    # Graf: osa X je síla F, osa Y je prodloužení y0
+    scatter = ax.errorbar(F_vals, y0_vals, xerr=F_errs, yerr=y0_errs, fmt='o', capsize=3, elinewidth=1.2, label=f'Pružina {p} (data)')
     color = scatter[0].get_color()
     
     if len(y0_vals) >= 2:
         try:
-            popt, pcov = curve_fit(lin_fit_affine, y0_vals, F_vals, sigma=F_errs, absolute_sigma=True)
-            k_stat = ufloat(popt[0], np.sqrt(pcov[0, 0]))
+            # Fitování y = a*F + b, kde a = 1/k
+            popt, pcov = curve_fit(lin_fit_affine, F_vals, y0_vals, sigma=y0_errs, absolute_sigma=True)
+            
+            # Parametr a (směrnice) a b (posun)
+            a_stat = ufloat(popt[0], np.sqrt(pcov[0, 0]))
             b_stat = ufloat(popt[1], np.sqrt(pcov[1, 1]))
             
-            # Vykreslení fitu jen mírně za hranice dat
-            x_fit = np.linspace(0, max(y0_vals)*1.05, 100)
-            eq_label = f'{p} fit: F = {popt[0]:.1f}y {format_eq_b(popt[1])}'
-            ax.plot(x_fit, lin_fit_affine(x_fit, *popt), '-', color=color, alpha=0.8, label=eq_label)
+            # Výpočet tuhosti k = 1 / a (včetně automatického přenosu chyb)
+            if a_stat.n != 0:
+                k_stat = 1 / a_stat
+            else:
+                k_stat = ufloat(0, 0)
+            
+            # Vykreslení fitu (x je F, y je prodloužení)
+            x_fit = np.linspace(0, max(F_vals)*1.05, 100)
+            y_fit = lin_fit_affine(x_fit, *popt)
+            eq_label = f'{p} fit: y = {popt[0]:.4f}F {format_eq_b(popt[1], 4)}'
+            ax.plot(x_fit, y_fit, '-', color=color, alpha=0.8, label=eq_label)
         except RuntimeError:
             k_stat, b_stat = ufloat(0, 0), ufloat(0, 0)
     else:
@@ -187,8 +198,8 @@ for p in pruziny_stat:
 
     stat_results[p] = {'k': k_stat, 'b': b_stat}
 
-ax.set_xlabel('y / m')
-ax.set_ylabel('F / N')
+ax.set_xlabel('F / N')
+ax.set_ylabel('y / m')
 # Bez titulku pro protokol
 ax.legend(loc='best')
 plt.savefig(os.path.join(OUT_DIR, 'graf_statika.png'), dpi=300)
@@ -336,8 +347,8 @@ with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
     f.write("="*65 + "\n\n")
     
     f.write("--- 1. TUHOST PRUŽIN (Statická metoda) ---\n")
-    f.write("Rovnice regrese: F = k*y + b\n")
-    f.write(f"{'Pružina':<10} | {'Tuhost k (N/m)':<25} | {'Posun b (N)':<25}\n")
+    f.write("Rovnice regrese: y = (1/k)*F + b\n")
+    f.write(f"{'Pružina':<10} | {'Tuhost k (N/m)':<25} | {'Posun b (m)':<25}\n")
     f.write("-" * 65 + "\n")
     for p in pruziny_stat:
         k_str = format_unc(stat_results[p]['k'].n, stat_results[p]['k'].s)
