@@ -1,0 +1,99 @@
+# ==========================================
+# HLAVIČKA SOUBORU
+# ==========================================
+[Header]
+Experiment = Kolo s hřídelí
+TaskNumber = 1
+Experimenter = Lukáš Hrdý
+Date = 2026-04-07
+
+# ==========================================
+# LABORATORNÍ PODMÍNKY
+# ==========================================
+[Conditions]
+Temperature_C = 22.7
+Humidity_pct = 23.6
+Pressure_hPa = 995.9
+
+# ==========================================
+# POUŽITÉ PŘÍSTROJE
+# ==========================================
+[Instruments]
+Hardware = kolo s hřídelí, posuvné měřidlo, závaží, měřidlo času DS 35, váha scout pro
+Software = Kolo
+
+# ==========================================
+# NEJISTOTY PŘÍSTROJŮ A VELIČIN
+# ==========================================
+# Všechny hodnoty představují absolutní chyby měření v uvedených jednotkách.
+[Uncertainties]
+# Chyba měření délky nitě [cm]
+err_length_thread_cm = 0.1
+# Chyba měření hmotnosti (váha scout pro) [g]
+err_mass_g = 0.1
+# Reakční doba pozorovatele [s]
+err_time_reaction_s = 0.3
+# Chyba posuvného měřidla je zvýšená kvůli nerovnostem a vyšší hraně u válců [cm]
+err_caliper_cm = 0.01
+# Chyba měření mezery mezi soukolím a závažím zvýšená chyba kvůli nepřesnému přikládání metru [cm]
+err_gap_cm = 0.2
+# Zvýšená chyba měření průměru závaží (nerovnoměrnost) [cm]
+err_weight_diameter_cm = 0.2
+# Chyba měření průměrů hřídelí [cm]
+err_shaft_diameter_cm = 0.05
+
+# ==========================================
+# PŘÍMÁ MĚŘENÍ - JEDNOTLIVÉ HODNOTY
+# ==========================================
+[Measurements_Single]
+# Délka použité nitě [cm]
+length_thread_cm = 188.8
+# Hmotnost nitě s háčkem [g]
+m_nit = 0.8
+# Hmotnost hlavního závaží [g]
+mass_main_weight_g = 146.9
+# Průměr závaží [cm]
+diameter_weight_cm = 2.35
+# průměr hřídele 
+d_hridel = 1.25
+# Vršek kuličky - spodek hridele
+lambda = 21.7
+
+# ==========================================
+# PŘÍMÁ MĚŘENÍ - TABULKY DAT
+# ==========================================
+[Table_Weight_Masses]
+# Hmotnosti jednotlivých přídavných závaží [g]
+# weight_id, mass_g
+A, 11.9
+B, 16.9
+C, 24.7
+D, 34.3
+E, 49.1
+
+[Table_Periods]
+# Naměřené časy pro 10 kmitů [s]
+# t_10_oscillations_s
+24.44
+24.52
+24.41
+24.48
+24.44
+24.61
+24.55
+24.57
+24.62
+24.55
+24.60
+24.52
+24.61
+24.50
+24.58
+
+[Table_Shaft_Diameters]
+# Průměry jednotlivých kol, na které se namotaly [mm]
+# shaft_diameter_mm
+59.8
+102.3
+139.8
+180.0

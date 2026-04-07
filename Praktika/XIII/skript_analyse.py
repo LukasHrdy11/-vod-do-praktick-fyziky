@@ -10,12 +10,17 @@ import uncertainties.unumpy as unp
 # =============================================================================
 # KONFIGURACE SKRIPTU
 # =============================================================================
-DATA_FILE = "data.txt"                     # Název hlavního konfiguračního souboru
-DATA_DIR = "data"                          # Složka, kde leží 20 souborů TO XX mm & X.txt
-OUTPUT_RESULTS = "vysledky_analyzy.txt"    # Soubor, kam se uloží textové výsledky
-GRAFY_DIR = "grafy"                        # Složka, kam se uloží vygenerované grafy
-GRAV_ZRYCHLENI = 9.81                      # Tíhové zrychlení [m/s^2]
-DELIC_KMITU = 10                           # Počet kmitů měřených najednou
+DATA_FILE = "data.txt"                     
+DATA_DIR = "data"                          
+OUTPUT_RESULTS = "vysledky_analyzy.txt"    
+GRAFY_DIR = "grafy"                        
+GRAV_ZRYCHLENI = ufloat(9.811, 0.001)
+DELIC_KMITU = 10                           
+
+# SEZNAM MĚŘENÍ K VYŘAZENÍ Z REGRESE I* vs alpha
+# Formát: [('nominalni_prumer_ze_jmena_souboru', 'ID_zavazi')]
+# Zde vyřazuji bod 60 mm, závaží D (což je ten vyskočený bod z tvého obrázku)
+EXCLUDE_FROM_FIT = []
 
 # Vytvoření složky pro grafy, pokud neexistuje
 if not os.path.exists(GRAFY_DIR):
@@ -25,7 +30,6 @@ if not os.path.exists(GRAFY_DIR):
 # 1. FUNKCE PRO NAČÍTÁNÍ DATA.TXT
 # =============================================================================
 def load_data_txt(filepath):
-    """Vlastní parser pro načtení data.txt strukturovaného do sekcí."""
     data = {'single': {}, 'tables': {}}
     current_section = None
     
@@ -35,7 +39,6 @@ def load_data_txt(filepath):
             if not line or line.startswith('#'):
                 continue
             
-            # Detekce sekce
             match_section = re.match(r'\[(.*?)\]', line)
             if match_section:
                 current_section = match_section.group(1)
@@ -43,7 +46,6 @@ def load_data_txt(filepath):
                     data['tables'][current_section] = []
                 continue
             
-            # Načítání hodnot
             if current_section in ['Header', 'Conditions', 'Instruments', 'Uncertainties', 'Measurements_Single']:
                 if '=' in line:
                     key, val = line.split('=', 1)
@@ -54,7 +56,6 @@ def load_data_txt(filepath):
                         pass
                     data['single'][key] = val
             elif current_section and current_section.startswith('Table_'):
-                # Hodnoty oddělené čárkou
                 items = [x.strip() for x in line.split(',')]
                 data['tables'][current_section].append(items)
                 
@@ -67,7 +68,6 @@ def linear_func(x, a, b):
     return a * x + b
 
 def fit_line(x, y):
-    """Provede lineární regresi a vrátí parametry jako objekty ufloat."""
     popt, pcov = curve_fit(linear_func, x, y)
     a = ufloat(popt[0], np.sqrt(pcov[0,0]))
     b = ufloat(popt[1], np.sqrt(pcov[1,1]))
@@ -80,32 +80,26 @@ def process_pendulum(data):
     single = data['single']
     tables = data['tables']
     
-    # --- Načtení chyb ---
-    err_mass = single['err_mass_g'] / 1000            # g -> kg
-    err_caliper = single['err_caliper_cm'] / 100      # cm -> m
-    err_weight_diam = single['err_weight_diameter_cm'] / 100 # cm -> m
-    err_gap = single['err_gap_cm'] / 100              # cm -> m
-    err_time = single['err_time_reaction_s']          # s
+    err_mass = single['err_mass_g'] / 1000            
+    err_caliper = single['err_caliper_cm'] / 100      
+    err_weight_diam = single['err_weight_diameter_cm'] / 100 
+    err_time = single['err_time_reaction_s']         
+    err_gap_cm = single['err_gap_cm'] / 100 
     
-    # --- Výpočet polohy těžiště l ---
-    d_vals = np.array([float(x[0]) for x in tables['Table_Axis_Diameter']]) / 100
-    d_mean = np.mean(d_vals)
-    d_stat_err = np.std(d_vals, ddof=1) / np.sqrt(len(d_vals))
-    d_kolo = ufloat(d_mean, np.sqrt(d_stat_err**2 + err_caliper**2))
-    
+    # Výpočet polohy těžiště l podle nové metodiky (d_hridel/2 + lambda + D_zavazi/2)
+    d_hridel = ufloat(single['d_hridel'] / 100, err_caliper)
+    dist_lambda = ufloat(single['lambda'] / 100, err_gap_cm)  # Převod lambda z cm na m a přidání chyby
     D_zav = ufloat(single['diameter_weight_cm'] / 100, err_weight_diam)
     
-    l_kyv = d_kolo/2 + D_zav/2 + ufloat(0, err_gap)
+    l_kyv = (d_hridel / 2) + dist_lambda + (D_zav / 2)
     m_kyv = ufloat(single['mass_main_weight_g'] / 1000, err_mass)
     
-    # --- Perioda T ---
     t_vals = np.array([float(x[0]) for x in tables['Table_Periods']])
     t_mean = np.mean(t_vals)
     t_stat_err = np.std(t_vals, ddof=1) / np.sqrt(len(t_vals))
     T_10 = ufloat(t_mean, np.sqrt(t_stat_err**2 + err_time**2))
     T_kyv = T_10 / DELIC_KMITU
     
-    # --- Moment setrvačnosti I ---
     g = GRAV_ZRYCHLENI
     I_kyv = m_kyv * l_kyv * ((g * T_kyv**2) / (4 * np.pi**2) - l_kyv)
     
@@ -120,14 +114,24 @@ def process_rotation(data):
     
     err_mass = single['err_mass_g'] / 1000
     err_shaft = single['err_shaft_diameter_cm'] / 100
+    m_nit = single.get('m_nit', 0.0) / 1000  # Hmotnost nitě v kg
     
+    # Namapování přesných poloměrů z tabulky
+    real_shaft_diams = [float(x[0]) for x in tables['Table_Shaft_Diameters']]
+    
+    def get_real_diam(nom_diam):
+        # Najde nejbližší reálný průměr k tomu nominálnímu z názvu souboru
+        return min(real_shaft_diams, key=lambda x: abs(x - nom_diam))
+
+    # Načtení hmotností a přičtení hmotnosti nitě
     mass_dict = {}
     for row in tables['Table_Weight_Masses']:
-        mass_dict[row[0]] = ufloat(float(row[1]) / 1000, err_mass)
+        mass_zavazi = ufloat(float(row[1]) / 1000, err_mass)
+        mass_nit = ufloat(m_nit, err_mass) # Konzervativně použijeme stejnou chybu vah
+        mass_dict[row[0]] = mass_zavazi + mass_nit
     
     rotation_results = []
     
-    # Správné nasměrování do složky data!
     search_pattern = os.path.join(DATA_DIR, 'TO * mm & *.txt')
     files = glob.glob(search_pattern)
     
@@ -135,60 +139,61 @@ def process_rotation(data):
         print(f"POZOR: Nebyly nalezeny žádné soubory ve složce '{DATA_DIR}'!")
         return []
         
-    print(f"Nalezeno {len(files)} souborů pro metodu otáčení. Generuji grafy...")
+    print(f"Nalezeno {len(files)} souborů pro metodu otáčení. Generuji jeden společný graf...")
     
-    for file in files:
+    colors = plt.cm.tab20(np.linspace(0, 1, len(files)))
+    plt.figure(figsize=(12, 8))
+    
+    for idx, file in enumerate(files):
         match = re.search(r'TO (\d+) mm & ([A-Z])\.txt', file)
         if not match:
             continue
         
-        shaft_diam_mm = float(match.group(1))
+        nom_diam_mm = int(match.group(1))
         weight_id = match.group(2)
         
-        r_val = (shaft_diam_mm / 1000) / 2
+        # Přiřazení skutečného průměru místo zaokrouhleného z názvu souboru
+        real_diam_mm = get_real_diam(nom_diam_mm)
+        r_val = (real_diam_mm / 1000) / 2
         r_shaft = ufloat(r_val, err_shaft / 2)
+        
         m_weight = mass_dict[weight_id]
         
-        # Načtení dat
+        # Načtení a regrese
         d = np.loadtxt(file, skiprows=1)
         t = d[:, 0]
         omega = d[:, 1]
         
-        # Lineární regrese
         eps, om0 = fit_line(t, omega)
-        
-        # Výpočet alpha a I*
         alpha = 1 / eps
         g = GRAV_ZRYCHLENI
         I_star = m_weight * r_shaft**2 * ((g / (r_shaft * eps)) - 1)
         
         rotation_results.append({
             'file': file,
-            'r_mm': shaft_diam_mm,
+            'nom_mm': str(nom_diam_mm), # Pro účely filtrování
+            'r_mm': real_diam_mm,       # Skutečný průměr
             'weight_id': weight_id,
             'eps': eps,
             'alpha': alpha,
             'I_star': I_star
         })
         
-        # --- GENEROVÁNÍ GRAFU ---
-        plt.figure(figsize=(7, 5))
-        plt.plot(t, omega, 'k.', label='Naměřená data')
-        
+        # Vykreslení do společného grafu
+        plt.plot(t, omega, '.', color=colors[idx], markersize=5)
         t_fit = np.linspace(min(t), max(t), 100)
         omega_fit = eps.n * t_fit + om0.n
+        eq_label = f"Kl. {real_diam_mm:.1f}, Zav. {weight_id}: $\\omega = {eps.n:.4f}t + {om0.n:.4f}$"
+        plt.plot(t_fit, omega_fit, '-', color=colors[idx], label=eq_label)
         
-        eq_label = f"Regrese: $\\omega = {eps.n:.4f}t + {om0.n:.4f}$"
-        plt.plot(t_fit, omega_fit, 'r-', label=eq_label)
-        
-        plt.xlabel('t / s')
-        plt.ylabel(r'$\omega$ / rad$\cdot$s$^{-1}$')
-        plt.legend(loc='best')
-        plt.grid(True, linestyle='--', alpha=0.6)
-        
-        safename = f"graf_{int(shaft_diam_mm)}mm_{weight_id}.png"
-        plt.savefig(os.path.join(GRAFY_DIR, safename), bbox_inches='tight', dpi=150)
-        plt.close()
+    plt.xlabel('t / s')
+    plt.ylabel(r'$\omega$ / rad$\cdot$s$^{-1}$')
+    plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', fontsize='small', ncol=1)
+    plt.grid(True, linestyle='--', alpha=0.6)
+    
+    safename = "graf_vsechny_omega_vs_t.pdf"
+    plt.savefig(os.path.join(GRAFY_DIR, safename), bbox_inches='tight', dpi=150)
+    plt.close()
 
     return rotation_results
 
@@ -199,28 +204,49 @@ def main():
     print("Načítám data...")
     data = load_data_txt(DATA_FILE)
     
-    # Zpracování metody kyvů
     I_kyv, m_kyv, l_kyv, T_kyv = process_pendulum(data)
-    
-    # Zpracování metody otáčení
     rot_res = process_rotation(data)
     
     M_t, I_k = None, None
     if len(rot_res) > 2:
-        alpha_nom = np.array([r['alpha'].n for r in rot_res])
-        I_star_nom = np.array([r['I_star'].n for r in rot_res])
         
-        M_t, I_k = fit_line(alpha_nom, I_star_nom)
+        # Třídění dat na platná a vyřazená (podle EXCLUDE_FROM_FIT)
+        alpha_valid, I_star_valid = [], []
+        a_err_valid, i_err_valid = [], []
         
-        # --- GENEROVÁNÍ FINÁLNÍHO GRAFU I* na alpha ---
-        alpha_err = np.array([r['alpha'].s for r in rot_res])
-        I_star_err = np.array([r['I_star'].s for r in rot_res])
+        alpha_excl, I_star_excl = [], []
+        a_err_excl, i_err_excl = [], []
         
+        for r in rot_res:
+            is_excluded = any(r['nom_mm'] == ex[0] and r['weight_id'] == ex[1] for ex in EXCLUDE_FROM_FIT)
+            
+            if is_excluded:
+                alpha_excl.append(r['alpha'].n)
+                I_star_excl.append(r['I_star'].n)
+                a_err_excl.append(r['alpha'].s)
+                i_err_excl.append(r['I_star'].s)
+            else:
+                alpha_valid.append(r['alpha'].n)
+                I_star_valid.append(r['I_star'].n)
+                a_err_valid.append(r['alpha'].s)
+                i_err_valid.append(r['I_star'].s)
+                
+        # Fitování POUZE platných bodů
+        M_t, I_k = fit_line(alpha_valid, I_star_valid)
+        
+        # Generování grafu
         plt.figure(figsize=(8, 6))
-        plt.errorbar(alpha_nom, I_star_nom, xerr=alpha_err, yerr=I_star_err, 
-                     fmt='bo', ecolor='gray', capsize=3, label='Hodnoty I*')
+        
+        # Zahrnuté body
+        plt.errorbar(alpha_valid, I_star_valid, xerr=a_err_valid, yerr=i_err_valid, 
+                     fmt='bo', ecolor='gray', capsize=3, label='Hodnoty I* (zahrnuto)')
+        
+        # Vyřazené body (červené křížky)
+        if alpha_excl:
+            plt.errorbar(alpha_excl, I_star_excl, xerr=a_err_excl, yerr=i_err_excl, 
+                         fmt='rx', ecolor='red', capsize=3, label='Vyřazená hodnota')
                      
-        alpha_fit = np.linspace(min(alpha_nom), max(alpha_nom), 100)
+        alpha_fit = np.linspace(min(alpha_valid + alpha_excl), max(alpha_valid + alpha_excl), 100)
         I_fit = M_t.n * alpha_fit + I_k.n
         
         eq_label = f"Regrese: $I^* = {M_t.n:.5f}\\alpha + {I_k.n:.5f}$"
@@ -230,7 +256,7 @@ def main():
         plt.ylabel(r'$I^*$ / kg$\cdot$m$^2$')
         plt.legend(loc='best')
         plt.grid(True, linestyle='--', alpha=0.6)
-        plt.savefig(os.path.join(GRAFY_DIR, "graf_I_star_vs_alpha.png"), bbox_inches='tight', dpi=150)
+        plt.savefig(os.path.join(GRAFY_DIR, "graf_I_star_vs_alpha.pdf"), bbox_inches='tight', dpi=150)
         plt.close()
         
     # --- ZÁPIS VÝSLEDKŮ DO SOUBORU ---
@@ -250,14 +276,17 @@ def main():
              f.write("Zadna data pro tuto metodu nebyla nalezena.\n")
         else:
             f.write("Tabulka dílčích výsledků:\n")
-            f.write(f"{'Válec(mm)':<12} {'Závaží':<8} {'epsilon(rad/s^2)':<20} {'alpha(s^2)':<20} {'I*(kg*m^2)':<20}\n")
-            f.write("-" * 80 + "\n")
+            f.write(f"{'Válec(mm)':<12} {'Závaží':<8} {'epsilon(rad/s^2)':<20} {'alpha(s^2)':<20} {'I*(kg*m^2)':<20} {'Poznámka':<10}\n")
+            f.write("-" * 90 + "\n")
             
             for r in sorted(rot_res, key=lambda x: (x['r_mm'], x['weight_id'])):
-                f.write(f"{r['r_mm']:<12.0f} {r['weight_id']:<8} "
-                        f"{r['eps']:.1u}".ljust(20) + 
-                        f"{r['alpha']:.1u}".ljust(20) + 
-                        f"{r['I_star']:.1u}".ljust(20) + "\n")
+                is_excl = "<Vyřazeno z fitu>" if any(r['nom_mm'] == ex[0] and r['weight_id'] == ex[1] for ex in EXCLUDE_FROM_FIT) else ""
+                
+                f.write(f"{r['r_mm']:<12.1f} {r['weight_id']:<8} "
+                        f"{r['eps']:.1u}    ".ljust(20) + 
+                        f"{r['alpha']:.1u}    ".ljust(20) + 
+                        f"{r['I_star']:.1u}    ".ljust(20) + 
+                        f"{is_excl}\n")
                 
             f.write("\n")
             if M_t and I_k:

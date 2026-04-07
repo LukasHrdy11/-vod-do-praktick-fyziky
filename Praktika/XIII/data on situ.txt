@@ -1,0 +1,33 @@
+podmínky :
+22.7 stupně
+23.6 %
+995.9 hPa
+
+Pomůcky: posuvné měřidlo, závaží, niť, měřidlo času DS 35, váha scout pro
+Chyba měření hmotnosti 0.1 g
+Reakční doba 0.3 s
+
+1) Perioda kmitů 10 kmitů, která tam je +/- 0.01 mm
+Průměr osy kola d - malá chyba měřeno posuvným měřidlem
+18.85, 18.83, 18.84, 18.82
+
+závaží s hmotností 146.9
+
+Mezera mezi soukolí a závaží (chyba 2 mm)
+
+závaží průměr zvýšená chyba 0.2 cm kvůli nerovnoměrnosti závaž
+2.35 cm
+
+Hmotnosti závaží 
+A 11.9
+B 16.9
+C 24.7
+D 34.3
+E 49.1
+
+
+periody: 24.44, 24.52, 24.41, 24.48, 24.44, 24.61, 24.55, 24.57, 24.62, 24.55, 24.60, 24.52, 24.61, 24.50, 24.58
+
+2) 
+
+Průměry hřídelí 60, 102, 140, 180 chyba 2 mm kvůli malé hraně, která znemožňuje přesné měření 
