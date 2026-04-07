@@ -18,8 +18,6 @@ GRAV_ZRYCHLENI = ufloat(9.811, 0.001)
 DELIC_KMITU = 10                           
 
 # SEZNAM MĚŘENÍ K VYŘAZENÍ Z REGRESE I* vs alpha
-# Formát: [('nominalni_prumer_ze_jmena_souboru', 'ID_zavazi')]
-# Zde vyřazuji bod 60 mm, závaží D (což je ten vyskočený bod z tvého obrázku)
 EXCLUDE_FROM_FIT = []
 
 # Vytvoření složky pro grafy, pokud neexistuje
@@ -152,7 +150,6 @@ def process_rotation(data):
         nom_diam_mm = int(match.group(1))
         weight_id = match.group(2)
         
-        # Přiřazení skutečného průměru místo zaokrouhleného z názvu souboru
         real_diam_mm = get_real_diam(nom_diam_mm)
         r_val = (real_diam_mm / 1000) / 2
         r_shaft = ufloat(r_val, err_shaft / 2)
