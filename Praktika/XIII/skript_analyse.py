@@ -84,14 +84,15 @@ def process_pendulum(data):
     err_time = single['err_time_reaction_s']         
     err_gap_cm = single['err_gap_cm'] / 100 
     
-    # Výpočet polohy těžiště l podle nové metodiky (d_hridel/2 + lambda + D_zavazi/2)
+    # Výpočet polohy těžiště l 
     d_hridel = ufloat(single['d_hridel'] / 100, err_caliper)
-    dist_lambda = ufloat(single['lambda'] / 100, err_gap_cm)  # Převod lambda z cm na m a přidání chyby
+    dist_lambda = ufloat(single['lambda'] / 100, err_gap_cm) 
     D_zav = ufloat(single['diameter_weight_cm'] / 100, err_weight_diam)
     
     l_kyv = (d_hridel / 2) + dist_lambda + (D_zav / 2)
     m_kyv = ufloat(single['mass_main_weight_g'] / 1000, err_mass)
     
+    # Výpočet periody T a její nejistoty
     t_vals = np.array([float(x[0]) for x in tables['Table_Periods']])
     t_mean = np.mean(t_vals)
     t_stat_err = np.std(t_vals, ddof=1) / np.sqrt(len(t_vals))
@@ -137,11 +138,10 @@ def process_rotation(data):
         print(f"POZOR: Nebyly nalezeny žádné soubory ve složce '{DATA_DIR}'!")
         return []
         
-    print(f"Nalezeno {len(files)} souborů pro metodu otáčení. Generuji jeden společný graf...")
+    print(f"Nalezeno {len(files)} souborů pro metodu otáčení. Generuji ukázkový graf...")
     
-    colors = plt.cm.tab20(np.linspace(0, 1, len(files)))
-    plt.figure(figsize=(12, 8))
-    
+    plot_data = [] # Pomocný seznam pro uložení dat ke kreslení
+
     for idx, file in enumerate(files):
         match = re.search(r'TO (\d+) mm & ([A-Z])\.txt', file)
         if not match:
@@ -150,6 +150,7 @@ def process_rotation(data):
         nom_diam_mm = int(match.group(1))
         weight_id = match.group(2)
         
+        # Přiřazení skutečného průměru místo zaokrouhleného z názvu souboru
         real_diam_mm = get_real_diam(nom_diam_mm)
         r_val = (real_diam_mm / 1000) / 2
         r_shaft = ufloat(r_val, err_shaft / 2)
@@ -176,21 +177,46 @@ def process_rotation(data):
             'I_star': I_star
         })
         
-        # Vykreslení do společného grafu
-        plt.plot(t, omega, '.', color=colors[idx], markersize=5)
-        t_fit = np.linspace(min(t), max(t), 100)
-        omega_fit = eps.n * t_fit + om0.n
-        eq_label = f"Kl. {real_diam_mm:.1f}, Zav. {weight_id}: $\\omega = {eps.n:.4f}t + {om0.n:.4f}$"
-        plt.plot(t_fit, omega_fit, '-', color=colors[idx], label=eq_label)
+        # Uložení dat pro graf (potřebujeme je později vyfiltrovat na 3 vzorky)
+        plot_data.append({
+            't': t,
+            'omega': omega,
+            'eps_val': eps.n,
+            'om0_val': om0.n,
+            'label': f"Kl. {real_diam_mm:.1f}, Zav. {weight_id}: $\\omega = {eps.n:.4f}t + {om0.n:.4f}$"
+        })
         
-    plt.xlabel('t / s')
-    plt.ylabel(r'$\omega$ / rad$\cdot$s$^{-1}$')
-    plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', fontsize='small', ncol=1)
-    plt.grid(True, linestyle='--', alpha=0.6)
-    
-    safename = "graf_vsechny_omega_vs_t.pdf"
-    plt.savefig(os.path.join(GRAFY_DIR, safename), bbox_inches='tight', dpi=150)
-    plt.close()
+    # --- VYKRESLENÍ REPREZENTATIVNÍHO GRAFU (pouze 3 závislosti) ---
+    if plot_data:
+        # Seřadíme nasbíraná data podle zrychlení eps
+        plot_data.sort(key=lambda x: x['eps_val'])
+        
+        # Vybereme indexy: nejmenší zrychlení, medián, největší zrychlení
+        if len(plot_data) >= 3:
+            selected_indices = [0, len(plot_data) // 2, len(plot_data) - 1]
+            selected_plots = [plot_data[i] for i in selected_indices]
+        else:
+            selected_plots = plot_data # Pokud je dat náhodou méně než 3, vykreslí se všechna
+            
+        colors = plt.cm.tab10(np.linspace(0, 1, len(selected_plots)))
+        plt.figure(figsize=(10, 6))
+        
+        for idx, p in enumerate(selected_plots):
+            t_vals = p['t']
+            plt.plot(t_vals, p['omega'], '.', color=colors[idx], markersize=5)
+            
+            t_fit = np.linspace(min(t_vals), max(t_vals), 100)
+            omega_fit = p['eps_val'] * t_fit + p['om0_val']
+            plt.plot(t_fit, omega_fit, '-', color=colors[idx], label=p['label'])
+            
+        plt.xlabel('t / s')
+        plt.ylabel(r'$\omega$ / rad$\cdot$s$^{-1}$')
+        plt.legend(loc='upper right', fontsize='small')
+        plt.grid(True, linestyle='--', alpha=0.6)
+        
+        safename = "graf_ukazka_omega_vs_t.pdf"
+        plt.savefig(os.path.join(GRAFY_DIR, safename), bbox_inches='tight', dpi=150)
+        plt.close()
 
     return rotation_results
 

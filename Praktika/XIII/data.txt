@@ -33,9 +33,9 @@ err_length_thread_cm = 0.1
 err_mass_g = 0.1
 # Reakční doba pozorovatele [s]
 err_time_reaction_s = 0.3
-# Chyba posuvného měřidla je zvýšená kvůli nerovnostem a vyšší hraně u válců [cm]
+# Chyba posuvného měřidla [cm]
 err_caliper_cm = 0.01
-# Chyba měření mezery mezi soukolím a závažím zvýšená chyba kvůli nepřesnému přikládání metru [cm]
+# Chyba měření mezery mezi soukolím a závažím [cm]
 err_gap_cm = 0.2
 # Zvýšená chyba měření průměru závaží (nerovnoměrnost) [cm]
 err_weight_diameter_cm = 0.2
@@ -58,6 +58,7 @@ diameter_weight_cm = 2.35
 d_hridel = 1.25
 # Vršek kuličky - spodek hridele
 lambda = 21.7
+
 
 # ==========================================
 # PŘÍMÁ MĚŘENÍ - TABULKY DAT
