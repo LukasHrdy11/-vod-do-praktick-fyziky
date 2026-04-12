@@ -327,8 +327,8 @@ def analyze():
         ax.axvspan(lp_intersect.n - 2, x_data_min, alpha=0.08,
                    color='red', label='extrapolace')
 
-    ax.set_xlabel(r'$l_p$ (mm)')
-    ax.set_ylabel(r'$T$ (s)')
+    ax.set_xlabel(r'$l_p$ / mm')
+    ax.set_ylabel(r'$T$ / s')
     ax.legend(loc='best')
     ax.grid(True, linestyle=':', alpha=0.7)
 
