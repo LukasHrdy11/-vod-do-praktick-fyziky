@@ -1,0 +1,25 @@
+============================================================
+ VÝSLEDKY ANALÝZY EXPERIMENTU: MĚŘENÍ TÍHOVÉHO ZRYCHLENÍ
+============================================================
+
+--- 1. MATEMATICKÉ KYVADLO ---
+Zprůměrovaná perioda:       T_M = (2,0056 ± 0,0003) s
+Délka idealiz. kyvadla:     L_M = (1,010 ± 0,001) m
+Vypočtené tíhové zrychlení: g_M = (9,91 ± 0,01) m/s^2
+
+--- 2. CHYBOVÁ ANALÝZA IDEALIZACE (Úkoly 4 a 5) ---
+a) Srovnání momentů setrvačnosti:
+   Idealizovaný model: I_ideal = (0,0635 ± 0,0001) kg*m^2
+   Reálné kyvadlo:     I_celk  = (0,0637 ± 0,0001) kg*m^2
+   Rozdíl idealizace:  delta_I = (0,0001742 ± 0,0000003) kg*m^2 ((0,27432 ± 0,00005) %)
+
+b) Srovnání délek:
+   Délka matematického k.: L_M   = (1,010 ± 0,001) m
+   Skutečná poloha těžiště: d_tez = (1,006 ± 0,001) m
+   Posun těžiště:          delta_L = (0,004265 ± 0,000004) m ((0,42236 ± 0,00008) %)
+
+--- 3. REVERZNÍ KYVADLO ---
+Společná poloha čočky:  l_p0 = (72 ± 5) mm
+Interpolovaná perioda:  T_r  = (2,011 ± 0,005) s
+Redukovaná délka:       L_r  = (0,994 ± 0,001) m
+Vypočtené tíhové zrychlení: g_r  = (9,70 ± 0,05) m/s^2
