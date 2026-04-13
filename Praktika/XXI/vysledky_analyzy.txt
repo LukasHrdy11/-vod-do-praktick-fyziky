@@ -20,14 +20,14 @@ b) Srovnání délek:
 
 --- 3. REVERZNÍ KYVADLO ---
   !! VAROVÁNÍ: Průsečík leží MIMO rozsah naměřených dat.
-  !! Rozsah dat: [26.34, 35.64] mm, průsečík: 71.61 mm
-  !! Nejistota průsečíku je silně závislá na linearitě modelu.
-  !! Pro spolehlivý výsledek přidejte body blíže k průsečíku.
+  !! Rozsah dat: [26.34, 35.64] mm, průsečík: 71.48 mm
+  !! Nejistota průsečíku závisí na předpokladu linearity mimo data.
+  !! Přidejte body blíže k průsečíku pro spolehlivý výsledek.
 
-Společná poloha čočky:  l_p0 = (71,61 [nejistota neurčena]) mm
-Interpolovaná perioda:  T_r  = (2,011 [nejistota neurčena]) s
+Společná poloha čočky:  l_p0 = (71,5 ± 0,2) mm
+Interpolovaná perioda:  T_r  = (2,0110 ± 0,0002) s
 Redukovaná délka:       L_r  = (0,994 ± 0,001) m
-Vypočtené tíhové zrychlení: g_r  = (9,703 [nejistota neurčena]) m/s^2
+Vypočtené tíhové zrychlení: g_r  = (9,70 ± 0,01) m/s^2
 
 --- 4. POROVNÁNÍ S TABULKOVOU HODNOTOU A DISKUZE ---
 Tabulková hodnota: g_tab = (9,811 ± 0,001) m/s^2
@@ -39,7 +39,7 @@ a) MATEMATICKÉ KYVADLO:
    Relativní přesnost měření:    = 0.10 %
 
 b) REVERZNÍ KYVADLO:
-   Absolutní odchylka: Delta g_r = (-0,1081 [nejistota neurčena]) m/s^2
-   Relativní odchylka:           = 1.101 %
-   Shoda v rámci nejistot:   z_r = [nelze určit — nejistota T_r nedostupná]
-   Relativní přesnost měření:    = nan %
+   Absolutní odchylka: Delta g_r = (-0,11 ± 0,01) m/s^2
+   Relativní odchylka:           = 1.096 %
+   Shoda v rámci nejistot:   z_r = 10.8 sigma
+   Relativní přesnost měření:    = 0.10 %

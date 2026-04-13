@@ -1,8 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import linregress
-from scipy.odr import ODR, Model, RealData
+from scipy.optimize import leastsq
 from uncertainties import ufloat
 from uncertainties.umath import *
 
@@ -11,7 +10,7 @@ from uncertainties.umath import *
 # =====================================================================
 INPUT_FILE = "data.txt"
 OUTPUT_FILE = "vysledky_analyzy.txt"
-PLOT_FILE = "graf_reverzni_kyvadlo.png"
+PLOT_FILE = "graf_reverzni_kyvadlo.pdf"
 
 pi = np.pi
 
@@ -27,21 +26,13 @@ plt.rcParams.update({
 # POMOCNÉ FUNKCE
 # =====================================================================
 def format_result(u_val, unit=""):
-    """
-    Zaokrouhlí hodnotu a nejistotu podle pravidel fyzikálního praktika.
-    Nejistota na 1 platnou cifru, hodnota na stejný počet desetinných míst.
-    Pokud je nejistota nulová nebo NaN, vrátí hodnotu bez nejistoty s varováním.
-    """
     val = u_val.n
     err = u_val.s
 
-    # Ochrana proti nulové nebo NaN nejistotě
     if err == 0 or np.isnan(err) or not np.isfinite(err):
-        # Zaokrouhlíme na rozumný počet desetinných míst (4 platné cifry)
-        sig_figs = 4
         if val != 0:
             order = int(np.floor(np.log10(abs(val))))
-            decimals = max(0, sig_figs - 1 - order)
+            decimals = max(0, 4 - 1 - order)
             res = f"{val:.{decimals}f} [nejistota neurčena]"
         else:
             res = "0 [nejistota neurčena]"
@@ -76,15 +67,12 @@ def parse_data(filename):
             line = line.split('#')[0].strip()
             if not line:
                 continue
-
             if line.startswith('[') and line.endswith(']'):
                 current_section = line[1:-1]
                 data[current_section] = {}
                 continue
-
             if current_section is None:
                 continue
-
             if "Tabulka" in current_section:
                 parts = [p.strip() for p in line.split(',')]
                 if any(c.isalpha() for c in parts[0]):
@@ -105,18 +93,49 @@ def parse_data(filename):
     return data
 
 
+# =====================================================================
+# FITOVÁNÍ — effective variance (metoda z kurzu)
+# =====================================================================
+def fit_line_effective_variance(x, y, ex, ey):
+    """
+    Lineární fit y = q + k*x metodou effective variance.
+    Minimalizuje chi^2 = sum[(y - q - k*x)^2 / (ey^2 + (k*ex)^2)]
+    pomocí scipy.optimize.leastsq.
+
+    Vrací:
+        beta  : [q, k]  (stejné pořadí jako scipy.odr: intercept, slope)
+        cov   : 2x2 kovariační matice parametrů [q, k]
+    """
+    def residuals(theta, x, y, ex, ey):
+        q, k = theta
+        return (y - q - k * x) / np.sqrt(ey**2 + (k * ex)**2)
+
+    # Počáteční odhad — obyčejná přímka přes první a poslední bod
+    k0 = (y[-1] - y[0]) / (x[-1] - x[0])
+    q0 = y[0] - k0 * x[0]
+
+    res = leastsq(residuals, [q0, k0], args=(x, y, ex, ey), full_output=True)
+
+    beta = res[0]           # [q, k]
+    cov  = res[1]           # kovariační matice 2x2
+
+    if cov is None:
+        raise RuntimeError("leastsq nevrátil kovariační matici — fit nekonvergoval.")
+
+    return beta, cov
+
+
+# =====================================================================
+# PRŮSEČÍK S ANALYTICKOU PROPAGACÍ CHYB
+# =====================================================================
 def intersect_with_uncertainty(beta1, cov1, beta2, cov2):
     """
-    Průsečík dvou přímek y = k*x + q s analytickou propagací chyb
-    z kovariančních matic ODR. Předpokládá nezávislost obou fitů.
-
-    Vrací (x0, y0) jako ufloat objekty.
-    Pokud je propagovaná nejistota nulová (numericky), nastaví ji na np.nan
-    aby format_result správně signalizoval problém místo tichého výpisu
-    surového floatu.
+    Průsečík dvou přímek y = q + k*x.
+    beta = [q, k], cov = 2x2 kovariační matice.
+    Předpokládá nezávislost obou fitů.
     """
-    k1, q1 = beta1
-    k2, q2 = beta2
+    q1, k1 = beta1
+    q2, k2 = beta2
     dk = k1 - k2
     dq = q2 - q1
 
@@ -126,28 +145,26 @@ def intersect_with_uncertainty(beta1, cov1, beta2, cov2):
     x0 = dq / dk
     y0 = k1 * x0 + q1
 
-    # Jacobiány x0 = (q2-q1)/(k1-k2)
-    dx0_dk1 = -dq / dk**2
+    # Jacobiány x0 = (q2-q1)/(k1-k2) vůči [q1,k1] a [q2,k2]
     dx0_dq1 = -1.0 / dk
-    dx0_dk2 =  dq / dk**2
+    dx0_dk1 = -dq  / dk**2
     dx0_dq2 =  1.0 / dk
+    dx0_dk2 =  dq  / dk**2
 
     # Jacobiány y0 = k1*x0 + q1
-    dy0_dk1 = x0 + k1 * dx0_dk1
     dy0_dq1 = k1 * dx0_dq1 + 1.0
-    dy0_dk2 = k1 * dx0_dk2
+    dy0_dk1 = x0 + k1 * dx0_dk1
     dy0_dq2 = k1 * dx0_dq2
+    dy0_dk2 = k1 * dx0_dk2
 
-    Jx1 = np.array([dx0_dk1, dx0_dq1])
-    Jx2 = np.array([dx0_dk2, dx0_dq2])
+    Jx1 = np.array([dx0_dq1, dx0_dk1])
+    Jx2 = np.array([dx0_dq2, dx0_dk2])
     var_x0 = float(Jx1 @ cov1 @ Jx1 + Jx2 @ cov2 @ Jx2)
 
-    Jy1 = np.array([dy0_dk1, dy0_dq1])
-    Jy2 = np.array([dy0_dk2, dy0_dq2])
+    Jy1 = np.array([dy0_dq1, dy0_dk1])
+    Jy2 = np.array([dy0_dq2, dy0_dk2])
     var_y0 = float(Jy1 @ cov1 @ Jy1 + Jy2 @ cov2 @ Jy2)
 
-    # Pokud vyjde variance záporná nebo nulová — numerická nestabilita.
-    # Nastavíme std_dev na NaN, aby format_result upozornil místo tiché chyby.
     std_x0 = np.sqrt(var_x0) if var_x0 > 0 else float('nan')
     std_y0 = np.sqrt(var_y0) if var_y0 > 0 else float('nan')
 
@@ -155,10 +172,6 @@ def intersect_with_uncertainty(beta1, cov1, beta2, cov2):
 
 
 def check_intersection_quality(x0, x_data, label="průsečík"):
-    """
-    Upozorní, pokud průsečík leží mimo rozsah dat (extrapolace).
-    Silná extrapolace = nespolehlivý výsledek.
-    """
     x_min, x_max = np.min(x_data), np.max(x_data)
     x_range = x_max - x_min
 
@@ -167,11 +180,10 @@ def check_intersection_quality(x0, x_data, label="průsečík"):
         nasobek = vzdalenost / x_range
         print(f"\n{'='*60}")
         print(f"  VAROVÁNÍ: {label} leží MIMO rozsah dat!")
-        print(f"  Rozsah dat:   [{x_min:.2f}, {x_max:.2f}] mm")
-        print(f"  Průsečík:      {x0:.2f} mm")
-        print(f"  Extrapolace o: {vzdalenost:.1f} mm ({nasobek:.1f}× šířka rozsahu dat)")
-        print(f"  → Výsledek je silně závislý na linearitě modelu.")
-        print(f"  → Přidejte měřicí body blíže k {x0:.1f} mm pro spolehlivý výsledek.")
+        print(f"  Rozsah dat:    [{x_min:.2f}, {x_max:.2f}] mm")
+        print(f"  Průsečík:       {x0:.2f} mm")
+        print(f"  Extrapolace o:  {vzdalenost:.1f} mm ({nasobek:.1f}× šířka rozsahu dat)")
+        print(f"  → Přidejte body blíže k {x0:.1f} mm.")
         print(f"{'='*60}\n")
     else:
         print(f"  OK: {label} leží uvnitř rozsahu dat ({x0:.2f} mm).")
@@ -188,13 +200,11 @@ def analyze():
         print(f"CHYBA: Soubor {INPUT_FILE} nebyl nalezen.")
         return
 
-    # --- NEJISTOTY ---
     err_t   = data['Nejistoty_pristroju']['err_t_s']
     err_m   = data['Nejistoty_pristroju']['err_m_g'] / 1000
     err_l_m = data['Nejistoty_pristroju']['err_l_metr_mm'] / 1000
     err_l_p = data['Nejistoty_pristroju']['err_l_posuvka_mm'] / 1000
 
-    # --- JEDNORÁZOVÁ MĚŘENÍ ---
     m_k = ufloat(data['Jednorazova_mereni']['m_k_g'], err_m * 1000) / 1000
     m_t = ufloat(data['Jednorazova_mereni']['m_t_g'], err_m * 1000) / 1000
     D_k = ufloat(data['Jednorazova_mereni']['D_k_mm'], err_l_p * 1000) / 1000
@@ -231,7 +241,7 @@ def analyze():
     rel_diff_L = (diff_L / L_M) * 100
 
     # =================================================================
-    # 3. REVERZNÍ KYVADLO
+    # 3. REVERZNÍ KYVADLO — effective variance fit
     # =================================================================
     lp_raw       = np.array(data['Tabulka_2_Reverzni_kyvadlo']['l_p'])
     t10_up_raw   = np.array(data['Tabulka_2_Reverzni_kyvadlo']['t_10_nahore'])
@@ -246,27 +256,13 @@ def analyze():
     sx = np.full_like(lp_raw, err_lp_mm)
     sy = np.full_like(T_up,   err_T_s)
 
-    def linear_func(B, x):
-        return B[0] * x + B[1]
-    linear_model = Model(linear_func)
-
-    guess_up   = linregress(lp_raw, T_up)
-    guess_down = linregress(lp_raw, T_down)
-
-    data_up  = RealData(lp_raw, T_up,   sx=sx, sy=sy)
-    odr_up   = ODR(data_up,  linear_model, beta0=[guess_up.slope,   guess_up.intercept])
-    out_up   = odr_up.run()
-
-    data_down = RealData(lp_raw, T_down, sx=sx, sy=sy)
-    odr_down  = ODR(data_down, linear_model, beta0=[guess_down.slope, guess_down.intercept])
-    out_down  = odr_down.run()
+    beta_up,   cov_up   = fit_line_effective_variance(lp_raw, T_up,   sx, sy)
+    beta_down, cov_down = fit_line_effective_variance(lp_raw, T_down, sx, sy)
 
     lp_intersect, T_r = intersect_with_uncertainty(
-        out_up.beta,   out_up.cov_beta,
-        out_down.beta, out_down.cov_beta
+        beta_up, cov_up, beta_down, cov_down
     )
 
-    # Kontrola kvality průsečíku — varování při extrapolaci
     check_intersection_quality(lp_intersect.n, lp_raw, label="Průsečík l_p0")
 
     g_r = (4 * pi**2 * L_r) / (T_r**2)
@@ -297,38 +293,30 @@ def analyze():
     ax.errorbar(lp_raw, T_down, xerr=sx, yerr=sy, fmt='ks',
                 markersize=8, capsize=3, label='čočka dole', zorder=3)
 
-    # Rozsah x pro vykreslení — rozšířený až k průsečíku
     x_min_plot = min(np.min(lp_raw) - 2, lp_intersect.n - 2)
     x_max_plot = max(np.max(lp_raw) + 2, lp_intersect.n + 2)
     x_fit = np.linspace(x_min_plot, x_max_plot, 300)
 
-    def linear_func(B, x):
-        return B[0] * x + B[1]
+    q_up,  k_up  = beta_up
+    q_down, k_down = beta_down
 
-    ax.plot(x_fit, out_up.beta[1]   + out_up.beta[0]   * x_fit,
-            'k--', alpha=0.5, label='_nolegend_')
-    ax.plot(x_fit, out_down.beta[1] + out_down.beta[0] * x_fit,
-            'k--', alpha=0.5, label='_nolegend_')
+    ax.plot(x_fit, q_up   + k_up   * x_fit, 'k--', alpha=0.5)
+    ax.plot(x_fit, q_down + k_down * x_fit, 'k--', alpha=0.5)
 
-    # Svislá čára v místě průsečíku
     ax.axvline(x=lp_intersect.n, color='gray', linestyle=':', linewidth=1)
     ax.axhline(y=T_r.n,          color='gray', linestyle=':', linewidth=1)
 
-    # Bod průsečíku
     ax.plot(lp_intersect.n, T_r.n, 'k*', markersize=12,
             label=f'průsečík ({lp_intersect.n:.2f} mm, {T_r.n:.4f} s)', zorder=5)
 
-    # Šedý pás mimo data (extrapolace)
     x_data_min, x_data_max = np.min(lp_raw), np.max(lp_raw)
     if lp_intersect.n > x_data_max:
-        ax.axvspan(x_data_max, lp_intersect.n + 2, alpha=0.08,
-                   color='red', label='extrapolace')
+        ax.axvspan(x_data_max, x_max_plot, alpha=0.08, color='red', label='extrapolace')
     elif lp_intersect.n < x_data_min:
-        ax.axvspan(lp_intersect.n - 2, x_data_min, alpha=0.08,
-                   color='red', label='extrapolace')
+        ax.axvspan(x_min_plot, x_data_min, alpha=0.08, color='red', label='extrapolace')
 
-    ax.set_xlabel(r'$l_p$ / mm')
-    ax.set_ylabel(r'$T$ / s')
+    ax.set_xlabel(r'$l_p$ (mm)')
+    ax.set_ylabel(r'$T$ (s)')
     ax.legend(loc='best')
     ax.grid(True, linestyle=':', alpha=0.7)
 
@@ -354,7 +342,6 @@ def analyze():
         f.write(f"   Idealizovaný model: I_ideal = {format_result(I_ideal, 'kg*m^2')}\n")
         f.write(f"   Reálné kyvadlo:     I_celk  = {format_result(I_celk, 'kg*m^2')}\n")
         f.write(f"   Rozdíl idealizace:  delta_I = {format_result(diff_I, 'kg*m^2')} ({format_result(rel_diff_I, '%')})\n\n")
-
         f.write("b) Srovnání délek:\n")
         f.write(f"   Délka matematického k.: L_M     = {format_result(L_M, 'm')}\n")
         f.write(f"   Skutečná poloha těžiště: d_tez  = {format_result(d_tez, 'm')}\n")
@@ -362,13 +349,12 @@ def analyze():
 
         f.write("--- 3. REVERZNÍ KYVADLO ---\n")
 
-        # Varování o extrapolaci přímo v protokolu
         x_min_d, x_max_d = np.min(lp_raw), np.max(lp_raw)
         if not (x_min_d <= lp_intersect.n <= x_max_d):
             f.write("  !! VAROVÁNÍ: Průsečík leží MIMO rozsah naměřených dat.\n")
             f.write(f"  !! Rozsah dat: [{x_min_d:.2f}, {x_max_d:.2f}] mm, průsečík: {lp_intersect.n:.2f} mm\n")
-            f.write("  !! Nejistota průsečíku je silně závislá na linearitě modelu.\n")
-            f.write("  !! Pro spolehlivý výsledek přidejte body blíže k průsečíku.\n\n")
+            f.write("  !! Nejistota průsečíku závisí na předpokladu linearity mimo data.\n")
+            f.write("  !! Přidejte body blíže k průsečíku pro spolehlivý výsledek.\n\n")
 
         f.write(f"Společná poloha čočky:  l_p0 = {format_result(lp_intersect, 'mm')}\n")
         f.write(f"Interpolovaná perioda:  T_r  = {format_result(T_r, 's')}\n")
@@ -390,7 +376,7 @@ def analyze():
         if np.isfinite(z_score_r):
             f.write(f"   Shoda v rámci nejistot:   z_r = {z_score_r:.1f} sigma\n")
         else:
-            f.write(f"   Shoda v rámci nejistot:   z_r = [nelze určit — nejistota T_r nedostupná]\n")
+            f.write(f"   Shoda v rámci nejistot:   z_r = [nelze určit]\n")
         f.write(f"   Relativní přesnost měření:    = {rel_unc_r:.2f} %\n")
 
     print(f"Výsledky byly úspěšně zapsány do {OUTPUT_FILE}")
