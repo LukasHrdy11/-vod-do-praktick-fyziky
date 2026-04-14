@@ -59,6 +59,10 @@ def format_result(u_val, unit=""):
 
 
 def parse_data(filename):
+    """
+    Načte INI-like strukturu s tabulkami. 
+    Nyní umí zpracovat i tabulky bez textové hlavičky (jen pole hodnot).
+    """
     data = {}
     current_section = None
 
@@ -73,16 +77,25 @@ def parse_data(filename):
                 continue
             if current_section is None:
                 continue
+            
             if "Tabulka" in current_section:
                 parts = [p.strip() for p in line.split(',')]
+                # Pokud první prvek obsahuje písmena, jde o hlavičku
                 if any(c.isalpha() for c in parts[0]):
                     for p in parts:
                         data[current_section][p] = []
                     data[current_section]['_keys'] = parts
                 else:
-                    keys = data[current_section]['_keys']
-                    for i, val in enumerate(parts):
-                        data[current_section][keys[i]].append(float(val))
+                    # Pokud existuje hlavička, zařazujeme do sloupců
+                    if '_keys' in data[current_section]:
+                        keys = data[current_section]['_keys']
+                        for i, val in enumerate(parts):
+                            data[current_section][keys[i]].append(float(val))
+                    # Pokud hlavička není, uložíme hodnoty jako prosté pole 'values'
+                    else:
+                        if 'values' not in data[current_section]:
+                            data[current_section]['values'] = []
+                        data[current_section]['values'].extend([float(x) for x in parts])
             else:
                 if '=' in line:
                     k, v = [x.strip() for x in line.split('=', 1)]
@@ -94,34 +107,21 @@ def parse_data(filename):
 
 
 # =====================================================================
-# FITOVÁNÍ — effective variance (metoda z kurzu)
+# FITOVÁNÍ — effective variance
 # =====================================================================
 def fit_line_effective_variance(x, y, ex, ey):
-    """
-    Lineární fit y = q + k*x metodou effective variance.
-    Minimalizuje chi^2 = sum[(y - q - k*x)^2 / (ey^2 + (k*ex)^2)]
-    pomocí scipy.optimize.leastsq.
-
-    Vrací:
-        beta  : [q, k]  (stejné pořadí jako scipy.odr: intercept, slope)
-        cov   : 2x2 kovariační matice parametrů [q, k]
-    """
     def residuals(theta, x, y, ex, ey):
         q, k = theta
         return (y - q - k * x) / np.sqrt(ey**2 + (k * ex)**2)
 
-    # Počáteční odhad — obyčejná přímka přes první a poslední bod
     k0 = (y[-1] - y[0]) / (x[-1] - x[0])
     q0 = y[0] - k0 * x[0]
-
     res = leastsq(residuals, [q0, k0], args=(x, y, ex, ey), full_output=True)
 
-    beta = res[0]           # [q, k]
-    cov  = res[1]           # kovariační matice 2x2
-
+    beta = res[0]
+    cov  = res[1]
     if cov is None:
         raise RuntimeError("leastsq nevrátil kovariační matici — fit nekonvergoval.")
-
     return beta, cov
 
 
@@ -129,11 +129,6 @@ def fit_line_effective_variance(x, y, ex, ey):
 # PRŮSEČÍK S ANALYTICKOU PROPAGACÍ CHYB
 # =====================================================================
 def intersect_with_uncertainty(beta1, cov1, beta2, cov2):
-    """
-    Průsečík dvou přímek y = q + k*x.
-    beta = [q, k], cov = 2x2 kovariační matice.
-    Předpokládá nezávislost obou fitů.
-    """
     q1, k1 = beta1
     q2, k2 = beta2
     dk = k1 - k2
@@ -145,13 +140,11 @@ def intersect_with_uncertainty(beta1, cov1, beta2, cov2):
     x0 = dq / dk
     y0 = k1 * x0 + q1
 
-    # Jacobiány x0 = (q2-q1)/(k1-k2) vůči [q1,k1] a [q2,k2]
     dx0_dq1 = -1.0 / dk
     dx0_dk1 = -dq  / dk**2
     dx0_dq2 =  1.0 / dk
     dx0_dk2 =  dq  / dk**2
 
-    # Jacobiány y0 = k1*x0 + q1
     dy0_dq1 = k1 * dx0_dq1 + 1.0
     dy0_dk1 = x0 + k1 * dx0_dk1
     dy0_dq2 = k1 * dx0_dq2
@@ -174,7 +167,6 @@ def intersect_with_uncertainty(beta1, cov1, beta2, cov2):
 def check_intersection_quality(x0, x_data, label="průsečík"):
     x_min, x_max = np.min(x_data), np.max(x_data)
     x_range = x_max - x_min
-
     if x0 < x_min or x0 > x_max:
         vzdalenost = min(abs(x0 - x_min), abs(x0 - x_max))
         nasobek = vzdalenost / x_range
@@ -182,8 +174,6 @@ def check_intersection_quality(x0, x_data, label="průsečík"):
         print(f"  VAROVÁNÍ: {label} leží MIMO rozsah dat!")
         print(f"  Rozsah dat:    [{x_min:.2f}, {x_max:.2f}] mm")
         print(f"  Průsečík:       {x0:.2f} mm")
-        print(f"  Extrapolace o:  {vzdalenost:.1f} mm ({nasobek:.1f}× šířka rozsahu dat)")
-        print(f"  → Přidejte body blíže k {x0:.1f} mm.")
         print(f"{'='*60}\n")
     else:
         print(f"  OK: {label} leží uvnitř rozsahu dat ({x0:.2f} mm).")
@@ -200,6 +190,7 @@ def analyze():
         print(f"CHYBA: Soubor {INPUT_FILE} nebyl nalezen.")
         return
 
+    # Načtení chyb v SI jednotkách (metry, kilogramy, sekundy)
     err_t   = data['Nejistoty_pristroju']['err_t_s']
     err_m   = data['Nejistoty_pristroju']['err_m_g'] / 1000
     err_l_m = data['Nejistoty_pristroju']['err_l_metr_mm'] / 1000
@@ -207,16 +198,29 @@ def analyze():
 
     m_k = ufloat(data['Jednorazova_mereni']['m_k_g'], err_m * 1000) / 1000
     m_t = ufloat(data['Jednorazova_mereni']['m_t_g'], err_m * 1000) / 1000
-    D_k = ufloat(data['Jednorazova_mereni']['D_k_mm'], err_l_p * 1000) / 1000
     h_h = ufloat(data['Jednorazova_mereni']['h_h_mm'], err_l_p * 1000) / 1000
     l_z = ufloat(data['Jednorazova_mereni']['l_z_mm'], err_l_m * 1000) / 1000
     L_r = ufloat(data['Jednorazova_mereni']['L_r_mm'], err_l_m * 1000) / 1000
 
-    # =================================================================
-    # 1. MATEMATICKÉ KYVADLO
-    # =================================================================
-    t10M_raw = np.array(data['Tabulka_1_Matematicke_kyvadlo']['t_10M'])
+    # --- ZPRACOVÁNÍ PRŮMĚRU KULIČKY ---
+    if 'Tabulka_1_Prumery_koule' in data:
+        D_raw_mm = np.array(data['Tabulka_1_Prumery_koule']['values'])
+        D_mean_mm = np.mean(D_raw_mm)
+        # Statistická chyba typu A (odchylka průměru)
+        D_stat_err_mm = np.std(D_raw_mm, ddof=1) / np.sqrt(len(D_raw_mm))
+        # Kvadratický součet nejistoty A a nejistoty B (posuvka)
+        D_tot_err_mm = np.sqrt(D_stat_err_mm**2 + (err_l_p * 1000)**2)
+        D_k = ufloat(D_mean_mm, D_tot_err_mm) / 1000
+        print(f"  Zpracován průměr kuličky (N={len(D_raw_mm)}): {D_mean_mm:.2f} ± {D_tot_err_mm:.2f} mm")
+    else:
+        # Fallback na starý soubor
+        D_k = ufloat(data['Jednorazova_mereni']['D_k_mm'], err_l_p * 1000) / 1000
 
+
+    # =================================================================
+    # 1. MATEMATICKÉ KYVADLO (Nyní Tabulka_2)
+    # =================================================================
+    t10M_raw = np.array(data['Tabulka_2_Matematicke_kyvadlo']['t_10M'])
     t10M_mean      = np.mean(t10M_raw)
     t10M_stat_err  = np.std(t10M_raw, ddof=1) / np.sqrt(len(t10M_raw))
     t10M_total_err = np.sqrt(t10M_stat_err**2 + err_t**2)
@@ -241,11 +245,11 @@ def analyze():
     rel_diff_L = (diff_L / L_M) * 100
 
     # =================================================================
-    # 3. REVERZNÍ KYVADLO — effective variance fit
+    # 3. REVERZNÍ KYVADLO (Nyní Tabulka_3)
     # =================================================================
-    lp_raw       = np.array(data['Tabulka_2_Reverzni_kyvadlo']['l_p'])
-    t10_up_raw   = np.array(data['Tabulka_2_Reverzni_kyvadlo']['t_10_nahore'])
-    t10_down_raw = np.array(data['Tabulka_2_Reverzni_kyvadlo']['t_10_dole'])
+    lp_raw       = np.array(data['Tabulka_3_Reverzni_kyvadlo']['l_p'])
+    t10_up_raw   = np.array(data['Tabulka_3_Reverzni_kyvadlo']['t_10_nahore'])
+    t10_down_raw = np.array(data['Tabulka_3_Reverzni_kyvadlo']['t_10_dole'])
 
     T_up   = t10_up_raw   / 10
     T_down = t10_down_raw / 10
@@ -309,14 +313,8 @@ def analyze():
     ax.plot(lp_intersect.n, T_r.n, 'k*', markersize=12,
             label=f'průsečík ({lp_intersect.n:.2f} mm, {T_r.n:.4f} s)', zorder=5)
 
-    x_data_min, x_data_max = np.min(lp_raw), np.max(lp_raw)
-    if lp_intersect.n > x_data_max:
-        ax.axvspan(x_data_max, x_max_plot, alpha=0.08, color='red', label='extrapolace')
-    elif lp_intersect.n < x_data_min:
-        ax.axvspan(x_min_plot, x_data_min, alpha=0.08, color='red', label='extrapolace')
-
-    ax.set_xlabel(r'$l_p$ (mm)')
-    ax.set_ylabel(r'$T$ (s)')
+    ax.set_xlabel(r'$l_p$ / mm')
+    ax.set_ylabel(r'$T$ / s')
     ax.legend(loc='best')
     ax.grid(True, linestyle=':', alpha=0.7)
 
@@ -333,6 +331,7 @@ def analyze():
         f.write("="*60 + "\n\n")
 
         f.write("--- 1. MATEMATICKÉ KYVADLO ---\n")
+        f.write(f"Kulička (kombinovaná nejistota): D_k = {format_result(D_k*1000, 'mm')}\n")
         f.write(f"Zprůměrovaná perioda:       T_M = {format_result(T_M, 's')}\n")
         f.write(f"Délka idealiz. kyvadla:     L_M = {format_result(L_M, 'm')}\n")
         f.write(f"Vypočtené tíhové zrychlení: g_M = {format_result(g_M, 'm/s^2')}\n\n")
@@ -348,14 +347,6 @@ def analyze():
         f.write(f"   Posun těžiště:          delta_L = {format_result(diff_L, 'm')} ({format_result(rel_diff_L, '%')})\n\n")
 
         f.write("--- 3. REVERZNÍ KYVADLO ---\n")
-
-        x_min_d, x_max_d = np.min(lp_raw), np.max(lp_raw)
-        if not (x_min_d <= lp_intersect.n <= x_max_d):
-            f.write("  !! VAROVÁNÍ: Průsečík leží MIMO rozsah naměřených dat.\n")
-            f.write(f"  !! Rozsah dat: [{x_min_d:.2f}, {x_max_d:.2f}] mm, průsečík: {lp_intersect.n:.2f} mm\n")
-            f.write("  !! Nejistota průsečíku závisí na předpokladu linearity mimo data.\n")
-            f.write("  !! Přidejte body blíže k průsečíku pro spolehlivý výsledek.\n\n")
-
         f.write(f"Společná poloha čočky:  l_p0 = {format_result(lp_intersect, 'mm')}\n")
         f.write(f"Interpolovaná perioda:  T_r  = {format_result(T_r, 's')}\n")
         f.write(f"Redukovaná délka:       L_r  = {format_result(L_r, 'm')}\n")
@@ -380,7 +371,6 @@ def analyze():
         f.write(f"   Relativní přesnost měření:    = {rel_unc_r:.2f} %\n")
 
     print(f"Výsledky byly úspěšně zapsány do {OUTPUT_FILE}")
-
 
 if __name__ == "__main__":
     analyze()

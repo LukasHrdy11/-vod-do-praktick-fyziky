@@ -5,52 +5,67 @@ Experimentator = Lukáš Hrdý
 Datum_mereni = 14. 4. 2026
 
 [Laboratorni_podminky]
-teplota_C = 22.9
-tlak_hPa = 996.0
-vlhkost_pct = 24.4
+teplota_C = 22.8
+tlak_hPa = 989.5
+vlhkost_pct = 30.9
 
 [Pristroje_a_software]
 # Seznam použitých přístrojů a softwaru (slouží pro dokumentaci protokolu)
 # 1. Svinovací / pásové měřidlo (pro délky závěsů a vzdálenost břitů)
 # 2. Posuvné / dotykové měřítko (pro polohu čočky a průměr kuličky)
-# 3. Laboratorní váhy (např. ExplorerPro pro určení hmotností)
-# 4. Digitální čítač (např. G-2001.500 pro měření period)
+# 3. Laboratorní váhy (Scout Pro)
+# 4. Digitální čítač (Ealing Counter-Timer-Frequency Meter)
 # 5. Termohygrobarometr 
 
 [Nejistoty_pristroju]
 # Přístrojové nejistoty (chyby typu B). 
 err_t_s = 0.0001        # nejistota digitálního čítače [s]
-err_m_g = 0.0001        # nejistota analytických vah [g]
-err_l_metr_mm = 1.0     # nejistota svinovacího metru pro dlouhé vzdálenosti [mm]
-err_l_posuvka_mm = 0.02 # nejistota posuvného měřítka [mm]
+err_m_g = 0.1           # nejistota analytických vah [g]
+err_l_metr_mm = 2.0     # nejistota svinovacího metru pro dlouhé vzdálenosti [mm]
+err_l_posuvka_mm = 0.5 # nejistota posuvného měřítka [mm]
 
 [Jednorazova_mereni]
 # Hodnoty měřené zpravidla jednou nebo zprůměrované předem.
 # Využívají se k určení momentu setrvačnosti a korekcím těžiště.
-m_k_g = 62.25           # hmotnost kuličky [g]
-m_t_g = 0.52            # hmotnost provázku [g]
-D_k_mm = 26.18          # průměr kuličky matematického kyvadla [mm]
+m_k_g = 62.3            # hmotnost kuličky [g]
+m_t_g = 0.5             # hmotnost provázku [g]
+D_k_mm = 26.20          # průměr kuličky matematického kyvadla [mm]
 h_h_mm = 6.77           # výška závěsného háčku matematického kyvadla [mm]
 l_z_mm = 990.0          # délka provázku matematického kyvadla [mm]
 L_r_mm = 994.0          # vzdálenost rovnoběžných břitů reverzního kyvadla [mm]
 
-[Tabulka_1_Matematicke_kyvadlo]
-# Tabulka 1: Měření doby kmitu matematického kyvadla
+
+[Tabulka_1_Prumery_koule]
+# Tabulka 1: Průměry koule z různých stran
+25.2, 26.2, 26.0, 27.0, 25.5
+
+[Tabulka_2_Matematicke_kyvadlo]
+# Tabulka 2: Měření doby kmitu matematického kyvadla
 # Zapisuji doby pro 10 period pro snížení relativní chyby.
 # N        ... číslo měření
 # t_10M / s ... čas 10 period matematického kyvadla
 N, t_10M
-1, 20.0588
-2, 20.0593
-3, 20.0506
+1, 20.1525
+2, 20.1555
+3, 20.1530
+4, 20.1563
+5, 20.1540
 
-[Tabulka_2_Reverzni_kyvadlo]
-# Tabulka 2: Měření doby kmitu reverzního kyvadla
+[Tabulka_3_Reverzni_kyvadlo]
+# Tabulka 3: Měření doby kmitu reverzního kyvadla
 # Slouží k sestrojení grafu interpolace a určení společné periody pro obě osy.
 # l_p / mm          ... poloha čočky (určená dotykovým měřidlem od bližšího břitu)
 # t_10_nahore / s   ... čas 10 period pro osu s čočkou nahoře
 # t_10_dole / s     ... čas 10 period pro osu s čočkou dole
 l_p, t_10_nahore, t_10_dole
-26.34, 18.4574, 19.7519
-30.86, 18.6073, 19.7850
-35.64, 18.7978, 19.8257
+81.6, 20.1667, 20.8418
+70.4, 20.1024, 20.3527
+60.6, 20.0151, 19.8346
+53.9, 19.9637, 19.5184
+64.9, 20.0537, 20.0856
+64.7, 20.0544, 20.0649
+64.5, 20.0498, 20.0606
+64.5, 20.0502, 20.0619
+64.5, 20.0530, 20.0642
+64.5, 20.0525, 20.0635
+64.5, 20.0535, 20.0612

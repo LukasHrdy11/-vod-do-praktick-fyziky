@@ -1,191 +1,318 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
-from scipy.optimize import brentq
-from scipy.stats import linregress
-import re
-import os
+import warnings
+warnings.filterwarnings("ignore")
 
-def load_data(filename="data.txt"):
-    """Jednoduchý parser pro načtení proměnných a tabulek ze souboru data.txt."""
+plt.rcParams.update({
+    'font.size': 12,
+    'axes.labelsize': 12,
+    'legend.fontsize': 10,
+    'xtick.labelsize': 11,
+    'ytick.labelsize': 11
+})
+
+# =====================================================================
+# PARSOVÁNÍ DAT
+# =====================================================================
+def parse_data(filename):
+    """
+    Načte INI-like strukturu s tabulkami. 
+    Umí zpracovat i tabulky bez textové hlavičky (jen pole hodnot).
+    """
     data = {}
+    current_section = None
     with open(filename, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-    
-    # Parsování jednorázových proměnných
-    for line in lines:
-        line = line.strip()
-        if '=' in line and not line.startswith('#') and not line.startswith('['):
-            key, val = line.split('=')
-            try:
-                data[key.strip()] = float(val.split('#')[0].strip())
-            except ValueError:
-                pass # Ignorujeme nečíselné hodnoty (např. jména)
-
-    # Parsování Tabulky 1 (Matematické kyvadlo)
-    t10_m = []
-    in_tab1 = False
-    for line in lines:
-        if '[Tabulka_1_Matematicke_kyvadlo]' in line: in_tab1 = True; continue
-        if in_tab1 and line.startswith('['): break
-        if in_tab1 and ',' in line and not line.startswith('#') and not line.startswith('N'):
-            parts = line.split(',')
-            t10_m.append(float(parts[1].strip()))
-    data['t10_M'] = np.array(t10_m)
-
-    # Parsování Tabulky 2 (Reverzní kyvadlo)
-    l_p, t_nahore, t_dole = [], [], []
-    in_tab2 = False
-    for line in lines:
-        if '[Tabulka_2_Reverzni_kyvadlo]' in line: in_tab2 = True; continue
-        if in_tab2 and line.startswith('['): break
-        if in_tab2 and ',' in line and not line.startswith('#') and not line.startswith('l_p'):
-            parts = line.split(',')
-            l_p.append(float(parts[0].strip()))
-            t_nahore.append(float(parts[1].strip()))
-            t_dole.append(float(parts[2].strip()))
-    data['l_p'] = np.array(l_p)
-    data['t_nahore'] = np.array(t_nahore)
-    data['t_dole'] = np.array(t_dole)
-
+        for line in f:
+            line = line.split('#')[0].strip()
+            if not line:
+                continue
+            if line.startswith('[') and line.endswith(']'):
+                current_section = line[1:-1]
+                data[current_section] = {}
+                continue
+            if current_section is None:
+                continue
+            
+            if "Tabulka" in current_section:
+                parts = [p.strip() for p in line.split(',')]
+                if any(c.isalpha() for c in parts[0]):
+                    for p in parts:
+                        data[current_section][p] = []
+                    data[current_section]['_keys'] = parts
+                else:
+                    if '_keys' in data[current_section]:
+                        keys = data[current_section]['_keys']
+                        for i, val in enumerate(parts):
+                            data[current_section][keys[i]].append(float(val))
+                    else:
+                        if 'values' not in data[current_section]:
+                            data[current_section]['values'] = []
+                        data[current_section]['values'].extend([float(x) for x in parts])
+            else:
+                if '=' in line:
+                    k, v = [x.strip() for x in line.split('=', 1)]
+                    try:
+                        data[current_section][k] = float(v)
+                    except ValueError:
+                        data[current_section][k] = v
     return data
 
-def simulate_period(g, I, M, d, theta0_deg=5.0, gamma=0.005):
+
+# =====================================================================
+# FYZIKÁLNÍ MODELY PERIODY
+# =====================================================================
+def T_ideal(L, g):
     """
-    Numerická integrace diferenciální rovnice kyvadla:
-    I * d^2(theta)/dt^2 + gamma * d(theta)/dt + M * g * d * sin(theta) = 0
-    Vrací periodu kmitů.
+    Model 1 — matematické kyvadlo, malé výchylky.
+    T = 2π√(L/g)
+    Zanedbává: hmotnost závěsu, rozměr kuličky, amplitudu.
     """
-    theta0 = np.radians(theta0_deg)
-    
-    def eq_of_motion(t, y):
+    return 2 * np.pi * np.sqrt(L / g)
+
+
+def T_fyzicke_mala_vychylka(I, M, d, g):
+    """
+    Model 2 — fyzické kyvadlo, stále malé výchylky (sin α ≈ α).
+    T = 2π√(I / (M·g·d))
+    Zahrnuje: reálný moment setrvačnosti, polohu těžiště.
+    Zanedbává: konečnou amplitudu.
+    """
+    return 2 * np.pi * np.sqrt(I / (M * g * d))
+
+
+def T_fyzicke_konecna_amplituda(I, M, d, g, theta0_rad):
+    """
+    Model 3 — fyzické kyvadlo, konečná amplituda, analytická korekce.
+    T = 2π√(I/Mgd) · (1 + (1/4)·sin²(α/2))
+    Zahrnuje: reálný I, d, konečnou amplitudu.
+    Zanedbává: útlum.
+    """
+    T0 = T_fyzicke_mala_vychylka(I, M, d, g)
+    korekce = 1.0 + 0.25 * np.sin(theta0_rad / 2)**2
+    return T0 * korekce
+
+
+def T_numericky(I, M, d, g, theta0_rad):
+    """
+    Model 4 — numerické řešení plné pohybové rovnice fyzického kyvadla
+    bez útlumu (konzervativní systém):
+        I·θ'' + M·g·d·sin(θ) = 0
+    """
+    def eq(t, y):
         theta, omega = y
-        dtheta_dt = omega
-        domega_dt = - (M * g * d / I) * np.sin(theta) - gamma * omega
-        return [dtheta_dt, domega_dt]
+        return [omega, -(M * g * d / I) * np.sin(theta)]
 
-    # Událost pro detekci průchodu nulou (z kladných do záporných hodnot)
-    def zero_crossing(t, y): return y[0]
-    zero_crossing.direction = -1
-    zero_crossing.terminal = False
+    def zero_crossing(t, y):
+        return y[0]
+    zero_crossing.terminal  = True   
+    zero_crossing.direction = -1     
 
-    # Simulujeme na dostatečně dlouhý časový interval
-    T_approx = 2 * np.pi * np.sqrt(I / (M * g * d))
-    t_span = (0, T_approx * 5)
-    
-    sol = solve_ivp(eq_of_motion, t_span, [theta0, 0], 
-                    events=zero_crossing, max_step=T_approx/1000)
-    
-    # Perioda je rozdíl mezi dvěma po sobě jdoucími průchody nulou stejným směrem
-    if len(sol.t_events[0]) >= 2:
-        return sol.t_events[0][1] - sol.t_events[0][0]
-    return T_approx
+    T_approx = T_fyzicke_konecna_amplituda(I, M, d, g, theta0_rad)
+    t_max    = T_approx * 0.6        
 
+    sol = solve_ivp(
+        eq, (0, t_max), [theta0_rad, 0.0],
+        events=zero_crossing,
+        rtol=1e-10, atol=1e-12,
+        max_step=t_max / 500
+    )
+
+    if sol.t_events[0].size > 0:
+        return 4.0 * sol.t_events[0][0]
+    else:
+        return T_approx
+
+
+# =====================================================================
+# VÝPOČET FYZIKÁLNÍCH PARAMETRŮ PRO JEDNU MC REALIZACI
+# =====================================================================
+def fyzikalni_parametry(m_k, m_t, D_k, h_h, l_z):
+    L_M   = l_z + h_h + D_k / 2
+    I_koule = (2/5) * m_k * (D_k / 2)**2
+    I_tyc   = (1/12) * m_t * l_z**2
+    I_celk  = I_tyc + m_t * (l_z / 2)**2 + I_koule + m_k * L_M**2
+    M_celk = m_t + m_k
+    d_tez  = (m_t * (l_z / 2) + m_k * L_M) / M_celk
+
+    return L_M, I_celk, M_celk, d_tez
+
+
+# =====================================================================
+# HLAVNÍ MONTE CARLO
+# =====================================================================
 def main():
-    data = load_data('data.txt')
-    
-    # --- 1. MATEMATICKÉ KYVADLO (Fyzikální model) ---
-    # Převod na SI jednotky
-    m_k = data['m_k_g'] / 1000
-    m_t = data['m_t_g'] / 1000
-    D_k = data['D_k_mm'] / 1000
-    R = D_k / 2
-    h_h = data['h_h_mm'] / 1000
-    l_z = data['l_z_mm'] / 1000
-    
-    L_str = l_z + h_h  # celková délka provázku
-    L_M_ideal = L_str + R # idealizovaná délka
-    
-    M_celk = m_k + m_t
-    
-    # Těžiště (od osy otáčení)
-    d_tez_str = L_str / 2
-    d_tez_k = L_str + R
-    d_tez_celk = (m_t * d_tez_str + m_k * d_tez_k) / M_celk
-    
-    # Momenty setrvačnosti (Steinerova věta)
-    I_str = (1/3) * m_t * L_str**2
-    I_k = (2/5) * m_k * R**2 + m_k * d_tez_k**2
-    I_celk = I_str + I_k
-    I_ideal = m_k * L_M_ideal**2
-    
-    # Experimentální perioda
-    T_M_exp = np.mean(data['t10_M']) / 10
+    INPUT_FILE = "data.txt"
+    print(f"Načítám data z {INPUT_FILE}...")
+    try:
+        data = parse_data(INPUT_FILE)
+    except FileNotFoundError:
+        print(f"CHYBA: Soubor {INPUT_FILE} nenalezen.")
+        return
 
-    # Hledání skutečného g přes digitální dvojče (root-finding)
-    # Hledáme takové g, pro které numerická simulace vrátí přesně změřenou periodu
-    def g_root_func(g_guess):
-        return simulate_period(g_guess, I_celk, M_celk, d_tez_celk) - T_M_exp
+    # --- Nejistoty ---
+    err_t   = data['Nejistoty_pristroju']['err_t_s']
+    err_m   = data['Nejistoty_pristroju']['err_m_g'] / 1000
+    err_l_m = data['Nejistoty_pristroju']['err_l_metr_mm'] / 1000
+    err_l_p = data['Nejistoty_pristroju']['err_l_posuvka_mm'] / 1000
+
+    # --- Střední hodnoty (SI) a odvození průměru D_k ---
+    if 'Tabulka_1_Prumery_koule' in data:
+        D_raw_mm = np.array(data['Tabulka_1_Prumery_koule']['values'])
+        mu_Dk = np.mean(D_raw_mm) / 1000
+        # Kombinovaná nejistota D_k (statistická typu A + přístrojová posuvky typu B)
+        D_stat_err_mm = np.std(D_raw_mm, ddof=1) / np.sqrt(len(D_raw_mm))
+        err_Dk = np.sqrt(D_stat_err_mm**2 + (err_l_p * 1000)**2) / 1000
+    else:
+        mu_Dk = data['Jednorazova_mereni']['D_k_mm'] / 1000
+        err_Dk = err_l_p
+
+    mu = {
+        'm_k': data['Jednorazova_mereni']['m_k_g'] / 1000,
+        'm_t': data['Jednorazova_mereni']['m_t_g'] / 1000,
+        'h_h': data['Jednorazova_mereni']['h_h_mm'] / 1000,
+        'l_z': data['Jednorazova_mereni']['l_z_mm'] / 1000,
+    }
+
+    # --- Naměřená perioda (Nyní z Tabulky 2) ---
+    t10M_raw       = np.array(data['Tabulka_2_Matematicke_kyvadlo']['t_10M'])
+    t10M_mean      = np.mean(t10M_raw)
+    t10M_stat_err  = np.std(t10M_raw, ddof=1) / np.sqrt(len(t10M_raw))
+    t10M_total_err = np.sqrt(t10M_stat_err**2 + err_t**2)
+
+    T_exp     = t10M_mean      / 10   
+    T_exp_err = t10M_total_err / 10   
+
+    g_tab      = 9.811
+    theta0_rad = np.radians(5.0)   
+
+    # --- Monte Carlo ---
+    N_iter = 5000
+    np.random.seed(42)
+
+    mc = {
+        'm_k': np.random.normal(mu['m_k'], err_m, N_iter),
+        'm_t': np.random.normal(mu['m_t'], err_m, N_iter),
+        'D_k': np.random.normal(mu_Dk, err_Dk, N_iter), # Zde použito složené err_Dk
+        'h_h': np.random.normal(mu['h_h'], err_l_p, N_iter),
+        'l_z': np.random.normal(mu['l_z'], err_l_m, N_iter)
+    }
+
+    T1 = np.zeros(N_iter)   
+    T2 = np.zeros(N_iter)   
+    T3 = np.zeros(N_iter)   
+    T4 = np.zeros(N_iter)   
+
+    print(f"Spouštím MC simulaci ({N_iter} iterací, 4 modely)...")
+    for i in range(N_iter):
+        if i % (N_iter // 5) == 0 and i > 0:
+            print(f"  {i/N_iter*100:.0f} % ...")
+
+        L_M, I, M, d = fyzikalni_parametry(
+            mc['m_k'][i], mc['m_t'][i], mc['D_k'][i],
+            mc['h_h'][i], mc['l_z'][i]
+        )
+
+        T1[i] = T_ideal(L_M, g_tab)
+        T2[i] = T_fyzicke_mala_vychylka(I, M, d, g_tab)
+        T3[i] = T_fyzicke_konecna_amplituda(I, M, d, g_tab, theta0_rad)
+        T4[i] = T_numericky(I, M, d, g_tab, theta0_rad)
+
+    print("Simulace dokončena.\n")
+
+    modely = [
+        (T1, 'Model 1: Ideální ($T=2\\pi\\sqrt{L/g}$)',              'lightgray',   'dimgray'),
+        (T2, 'Model 2: Fyzické kyvadlo, malé výchylky',              'steelblue',   'navy'),
+        (T3, 'Model 3: + korekce amplitudy (analytická)',            'mediumseagreen','darkgreen'),
+        (T4, 'Model 4: Numerické ODE (referenční)',                  'darkorange',  'saddlebrown'),
+    ]
+
+    print(f"{'Model':<45} {'střed [s]':>12} {'σ [ms]':>10} {'Δ vs. exp [ms]':>16}")
+    print("-" * 87)
+    for T_arr, nazev, _, _ in modely:
+        delta = (np.mean(T_arr) - T_exp) * 1000
+        print(f"{nazev:<45} {np.mean(T_arr):>12.6f} {np.std(T_arr)*1000:>10.4f} {delta:>+16.4f}")
+    print(f"{'Experiment':.<45} {T_exp:>12.6f} {T_exp_err*1000:>10.4f}")
+
+
+    # =====================================================================
+    # GRAF — Expected vs. Observed (Vylepšená vizualizace)
+    # =====================================================================
+    fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [2.5, 1]})
+    ax_main, ax_res = axes
+
+    # Definice barev pro lepší kontrast
+    barvy = ['#BDC3C7', '#3498DB', '#2ECC71', '#C0392B']
     
-    g_M_sim = brentq(g_root_func, 9.0, 10.0)
+    # Biny se počítají jen pro oblast simulovaných dat
+    hist_min = min(T1.min(), T2.min(), T3.min(), T4.min())
+    hist_max = max(T1.max(), T2.max(), T3.max(), T4.max())
+    bins = np.linspace(hist_min, hist_max, 45)
 
-    # --- 2. REVERZNÍ KYVADLO ---
-    l_p = data['l_p']
-    T_n = data['t_nahore'] / 10
-    T_d = data['t_dole'] / 10
+    # Vykreslení M1, M2 a M3 jako poloprůhledné plochy
+    for i in range(3):
+        T_arr, nazev, _, _ = modely[i]
+        ax_main.hist(T_arr, bins=bins, alpha=0.4, color=barvy[i], 
+                     edgecolor=barvy[i], linewidth=2.5, histtype='stepfilled',
+                     label=f'{nazev}\n  $\\mu={np.mean(T_arr):.4f}$ s, $\\sigma={np.std(T_arr)*1e3:.2f}$ ms')
+
+    # Vykreslení M4 pouze jako tlustou přerušovanou čáru
+    T_arr4, nazev4, _, _ = modely[3]
+    ax_main.hist(T_arr4, bins=bins, alpha=1.0, color=barvy[3], 
+                 linewidth=2.5, linestyle='--', histtype='step', zorder=4,
+                 label=f'{nazev4}\n  $\\mu={np.mean(T_arr4):.4f}$ s, $\\sigma={np.std(T_arr4)*1e3:.2f}$ ms')
+
+    # Naměřená hodnota a experimentální chyba
+    ax_main.axvline(T_exp, color='black', linewidth=3, zorder=6,
+                    label=f'Experiment (naměřená data):\n  $T = {T_exp:.5f}$ s')
+    ax_main.axvspan(T_exp - T_exp_err, T_exp + T_exp_err,
+                    color='black', alpha=0.15, zorder=5,
+                    label=f'Nejistota měření ($\\pm{T_exp_err*1e3:.2f}$ ms)')
+
+    # Anotace se šipkou na systematickou chybu
+    rozdil_M4_exp = np.mean(T_arr4) - T_exp
+    ax_main.annotate(f'Neznámá systematická chyba\nModely jsou posunuty o $\\approx {rozdil_M4_exp*1000:.1f}$ ms',
+                     xy=(T_exp, N_iter * 0.05),
+                     xytext=(T_exp + 0.003, N_iter * 0.08),
+                     arrowprops=dict(facecolor='black', arrowstyle='->', lw=1.5),
+                     fontsize=11, bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="black", alpha=0.9), zorder=10)
+
+    ax_main.set_xlabel(r'Perioda $T$ / s', fontsize=13)
+    ax_main.set_ylabel('Počet MC realizací', fontsize=13)
+    ax_main.legend(loc='lower right', fontsize=10, framealpha=0.9)
+    ax_main.grid(axis='y', linestyle='--', alpha=0.6)
+    ax_main.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.4f}".replace('.', ',')))
     
-    # Lineární regrese pro nalezení průsečíku (T_n(l) a T_d(l))
-    slope_n, int_n, _, _, _ = linregress(l_p, T_n)
-    slope_d, int_d, _, _, _ = linregress(l_p, T_d)
+    # Rozšíření osy X doleva
+    ax_main.set_xlim(left=T_exp - 0.002, right=hist_max + 0.001)
+
+    # --- Spodní panel: Sloupcový graf odchylek ---
+    stredni   = [np.mean(m[0]) for m in modely]
+    nazvy_kr  = ['M1\nIdeální', 'M2\nFyzické', 'M3\nAnalytické', 'M4\nNumerické']
+    odchylky_ms = [(s - T_exp) * 1000 for s in stredni]
+
+    bars = ax_res.bar(nazvy_kr, odchylky_ms, color=barvy,
+                      edgecolor='black', linewidth=1.2, alpha=0.85)
     
-    # Průsečík: slope_n * l + int_n = slope_d * l + int_d
-    l_p0 = (int_d - int_n) / (slope_n - slope_d)
-    T_r = slope_n * l_p0 + int_n
+    ax_res.axhline(0, color='black', linewidth=1.5, linestyle='-')
+    ax_res.axhspan(-T_exp_err*1000, T_exp_err*1000,
+                   color='black', alpha=0.15, label='Nejistota exp. měření')
     
-    L_r = data['L_r_mm'] / 1000
-    g_r = 4 * np.pi**2 * L_r / (T_r**2)
+    ax_res.set_ylabel(r'$\bar{T}_\mathrm{model} - T_\mathrm{exp}$ / ms', fontsize=13)
+    ax_res.legend(loc='lower right', fontsize=10)
+    ax_res.grid(axis='y', linestyle=':', alpha=0.6)
 
-    # --- TABULKOVÁ HODNOTA A CHYBY ---
-    g_tab = 9.811
-    err_g = 0.001
-    
-    # Generování výstupního textu
-    output_text = f"""============================================================
- VÝSLEDKY SIMULACE EXPERIMENTU: MĚŘENÍ TÍHOVÉHO ZRYCHLENÍ
-============================================================
+    max_odchylka = max(odchylky_ms)
+    ax_res.set_ylim(bottom=-2, top=max_odchylka + 3)
+    for bar, val in zip(bars, odchylky_ms):
+        ax_res.text(bar.get_x() + bar.get_width()/2, val + 0.5,
+                    f'{val:+.2f} ms', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
---- 1. MATEMATICKÉ KYVADLO ---
-Zprůměrovaná perioda:       T_M = {T_M_exp:.4f} s
-Délka idealiz. kyvadla:     L_M = {L_M_ideal:.4f} m
-Vypočtené tíhové zrychlení: g_M = {g_M_sim:.4f} m/s^2
+    plt.tight_layout()
+    PLOT_FILE = 'porovnani_modelu_experiment_vylepseno.pdf'
+    fig.savefig(PLOT_FILE, dpi=300)
+    print(f"Graf uložen jako '{PLOT_FILE}'.")
 
---- 2. CHYBOVÁ ANALÝZA IDEALIZACE ---
-a) Srovnání momentů setrvačnosti:
-   Idealizovaný model: I_ideal = {I_ideal:.6f} kg*m^2
-   Reálné kyvadlo:     I_celk  = {I_celk:.6f} kg*m^2
-   Rozdíl idealizace:  delta_I = {abs(I_ideal - I_celk):.6f} kg*m^2 ({abs(I_ideal - I_celk)/I_ideal * 100:.2f} %)
-
-b) Srovnání délek:
-   Délka matematického k.: L_M     = {L_M_ideal:.5f} m
-   Skutečná poloha těžiště: d_tez  = {d_tez_celk:.5f} m
-   Posun těžiště:          delta_L = {abs(L_M_ideal - d_tez_celk):.5f} m ({abs(L_M_ideal - d_tez_celk)/L_M_ideal * 100:.2f} %)
-
---- 3. REVERZNÍ KYVADLO ---
-Společná poloha čočky:  l_p0 = {l_p0:.2f} mm
-Interpolovaná perioda:  T_r  = {T_r:.5f} s
-Redukovaná délka:       L_r  = {L_r:.4f} m
-Vypočtené tíhové zrychlení: g_r  = {g_r:.4f} m/s^2
-
---- 4. POROVNÁNÍ S TABULKOVOU HODNOTOU A DISKUZE ---
-Tabulková hodnota: g_tab = (9,811 \u00b1 0,001) m/s^2
-
-a) MATEMATICKÉ KYVADLO:
-   Absolutní odchylka: Delta g_M = {abs(g_M_sim - g_tab):.4f} m/s^2
-   Relativní odchylka:           = {abs(g_M_sim - g_tab)/g_tab * 100:.2f} %
-   Shoda v rámci nejistot:   z_M = {abs(g_M_sim - g_tab) / err_g:.1f} sigma
-   Relativní přesnost měření:    = {abs(g_M_sim - g_tab)/g_tab * 100:.2f} %
-
-b) REVERZNÍ KYVADLO:
-   Absolutní odchylka: Delta g_r = {abs(g_r - g_tab):.4f} m/s^2
-   Relativní odchylka:           = {abs(g_r - g_tab)/g_tab * 100:.2f} %
-   Shoda v rámci nejistot:   z_r = {abs(g_r - g_tab) / err_g:.1f} sigma
-   Relativní přesnost měření:    = {abs(g_r - g_tab)/g_tab * 100:.2f} %
-"""
-
-    # Uložení do souboru
-    with open("vysledky_simulace.txt", "w", encoding="utf-8") as f:
-        f.write(output_text)
-    
-    print("Simulace dokončena. Výsledky uloženy do 'vysledky_simulace.txt'.")
 
 if __name__ == "__main__":
     main()

@@ -3,43 +3,39 @@
 ============================================================
 
 --- 1. MATEMATICKÉ KYVADLO ---
-Zprůměrovaná perioda:       T_M = (2,0056 ± 0,0003) s
-Délka idealiz. kyvadla:     L_M = (1,010 ± 0,001) m
-Vypočtené tíhové zrychlení: g_M = (9,91 ± 0,01) m/s^2
+Kulička (kombinovaná nejistota): D_k = (26,0 ± 0,6) mm
+Zprůměrovaná perioda:       T_M = (2,01543 ± 0,00007) s
+Délka idealiz. kyvadla:     L_M = (1,010 ± 0,002) m
+Vypočtené tíhové zrychlení: g_M = (9,81 ± 0,02) m/s^2
 
 --- 2. CHYBOVÁ ANALÝZA IDEALIZACE ---
 a) Srovnání momentů setrvačnosti:
-   Idealizovaný model: I_ideal = (0,0635 ± 0,0001) kg*m^2
-   Reálné kyvadlo:     I_celk  = (0,0637 ± 0,0001) kg*m^2
-   Rozdíl idealizace:  delta_I = (0,0001742 ± 0,0000003) kg*m^2 ((0,27432 ± 0,00005) %)
+   Idealizovaný model: I_ideal = (0,0635 ± 0,0003) kg*m^2
+   Reálné kyvadlo:     I_celk  = (0,0637 ± 0,0003) kg*m^2
+   Rozdíl idealizace:  delta_I = (0,00017 ± 0,00003) kg*m^2 ((0,26 ± 0,05) %)
 
 b) Srovnání délek:
-   Délka matematického k.: L_M     = (1,010 ± 0,001) m
-   Skutečná poloha těžiště: d_tez  = (1,006 ± 0,001) m
-   Posun těžiště:          delta_L = (0,004265 ± 0,000004) m ((0,42236 ± 0,00008) %)
+   Délka matematického k.: L_M     = (1,010 ± 0,002) m
+   Skutečná poloha těžiště: d_tez  = (1,006 ± 0,002) m
+   Posun těžiště:          delta_L = (0,0041 ± 0,0008) m ((0,41 ± 0,08) %)
 
 --- 3. REVERZNÍ KYVADLO ---
-  !! VAROVÁNÍ: Průsečík leží MIMO rozsah naměřených dat.
-  !! Rozsah dat: [26.34, 35.64] mm, průsečík: 71.48 mm
-  !! Nejistota průsečíku závisí na předpokladu linearity mimo data.
-  !! Přidejte body blíže k průsečíku pro spolehlivý výsledek.
-
-Společná poloha čočky:  l_p0 = (71,5 ± 0,2) mm
-Interpolovaná perioda:  T_r  = (2,0110 ± 0,0002) s
-Redukovaná délka:       L_r  = (0,994 ± 0,001) m
-Vypočtené tíhové zrychlení: g_r  = (9,70 ± 0,01) m/s^2
+Společná poloha čočky:  l_p0 = (64,4 ± 0,2) mm
+Interpolovaná perioda:  T_r  = (2,0049 ± 0,0002) s
+Redukovaná délka:       L_r  = (0,994 ± 0,002) m
+Vypočtené tíhové zrychlení: g_r  = (9,76 ± 0,02) m/s^2
 
 --- 4. POROVNÁNÍ S TABULKOVOU HODNOTOU A DISKUZE ---
 Tabulková hodnota: g_tab = (9,811 ± 0,001) m/s^2
 
 a) MATEMATICKÉ KYVADLO:
-   Absolutní odchylka: Delta g_M = (0,10 ± 0,01) m/s^2
-   Relativní odchylka:           = 1.020 %
-   Shoda v rámci nejistot:   z_M = 9.8 sigma
-   Relativní přesnost měření:    = 0.10 %
+   Absolutní odchylka: Delta g_M = (0,00 ± 0,02) m/s^2
+   Relativní odchylka:           = 0.030 %
+   Shoda v rámci nejistot:   z_M = 0.1 sigma
+   Relativní přesnost měření:    = 0.21 %
 
 b) REVERZNÍ KYVADLO:
-   Absolutní odchylka: Delta g_r = (-0,11 ± 0,01) m/s^2
-   Relativní odchylka:           = 1.096 %
-   Shoda v rámci nejistot:   z_r = 10.8 sigma
-   Relativní přesnost měření:    = 0.10 %
+   Absolutní odchylka: Delta g_r = (-0,05 ± 0,02) m/s^2
+   Relativní odchylka:           = 0.497 %
+   Shoda v rámci nejistot:   z_r = 2.5 sigma
+   Relativní přesnost měření:    = 0.20 %
