@@ -1,0 +1,15 @@
+[Laboratorni_podminky]
+t_lab = 22.0
+[Konstanty]
+r_0 = 0.26
+alpha = 30.0
+g = 9.811
+[Nejistoty_pristroju]
+u_t = 0.5
+u_dmax = 0.5
+u_r0 = 0.01
+u_alpha = 0.5
+[Mereni_povrchoveho_napeti]
+20.0, 15.2
+25.0, 14.9
+30.0, 14.5
